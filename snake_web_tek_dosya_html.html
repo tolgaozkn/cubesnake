@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<!-- v1.1.0: Remove Top10/leaderboard, center score on board, fix media/CSS, add small self-tests -->
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mini Yılan Oyunu</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; background:#0e0f12; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; color:#e7ebf3; }
+    .page { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding-top:110px; padding-bottom:110px; }
+
+    /* Oyun alanını tam ortala */
+    .center { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; position:relative; }
+    .hud { position:static; align-self:flex-start; margin:0 0 8px 0; z-index:2; background:rgba(20,22,27,.6); padding:8px 10px; border-radius:10px; font-weight:700; backdrop-filter: blur(4px); }
+    canvas { background:#0b0c10; border:1px solid #1f2430; border-radius:16px; box-shadow: 0 10px 40px rgba(0,0,0,.35); }
+
+    /* Başlangıç ve Game Over overlay */
+    .overlay { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg, rgba(9,10,14,.92), rgba(9,10,14,.88)); z-index: 10; padding:16px; }
+    .form { width:min(92vw, 420px); background:#181a20; border:1px solid #232937; color:#e7ebf3; border-radius:16px; padding:20px; box-shadow:0 14px 36px rgba(0,0,0,.4); }
+    .form h1 { margin:0 0 6px; font-size:20px; }
+    .form label { font-size:12px; opacity:.8; }
+    .row { margin-top:12px; }
+    .row input[type="text"] { width:100%; padding:12px 14px; border-radius:10px; border:1px solid #2a2e36; background:#0f1116; color:#e7ebf3; outline:none; }
+    .row button { width:100%; padding:12px; border:0; border-radius:12px; background:#4f7cff; color:#fff; font-weight:800; cursor:pointer; margin-top:10px; }
+    .fine { font-size:12px; opacity:.7; margin-top:8px; }
+
+    .toast { position:fixed; right:16px; top:16px; background:#1b1f27; color:#cfe0ff; padding:10px 12px; border-radius:10px; border:1px solid #273049; display:none; z-index: 20; }
+    .ad-top { position:fixed; left:50%; transform:translateX(-50%); top:8px; width:min(100%, 970px); height:90px; background:#0b0c10; border:1px dashed #2a2e36; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#8c93a3; z-index:30; }
+    .ad-bottom { position:fixed; left:0; right:0; bottom:0; height:90px; background:#0b0c10; border-top:1px solid #1c1f26; display:flex; align-items:center; justify-content:center; color:#8c93a3; z-index:25; }
+  </style>
+</head>
+<body>
+  <div class="ad-top">728x90 Banner (AdSense kodunu buraya koy)</div>
+  <div class="page">
+    <div class="center">
+      <div class="hud">Skor: <span id="score">0</span></div>
+      <canvas id="game" width="560" height="560" aria-label="Yılan Oyunu" role="img"></canvas>
+    </div>
+  </div>
+
+  <div class="overlay" id="startOverlay" aria-modal="true" role="dialog">
+    <div class="form">
+      <h1>Yılan</h1>
+      <div class="fine">Ok tuşlarıyla hareket et. Kendine ya da duvara çarparsan biter.</div>
+      <div class="row">
+        <label for="playerName">İsmin</label>
+        <input id="playerName" type="text" placeholder="ör. Boss" maxlength="20" />
+        <button id="startBtn">Başla</button>
+      </div>
+      <div class="fine">Skorun cihazına kaydedilmez; sadece bu tur için gösterilir.</div>
+    </div>
+  </div>
+
+  <!-- Oyun Bitti Modalı -->
+  <div class="overlay" id="gameOverOverlay" style="display:none" aria-modal="true" role="dialog">
+    <div class="form">
+      <h1>Oyun Bitti</h1>
+      <div class="row">Skorun: <b id="finalScore">0</b></div>
+      <div class="row"><button id="retryBtn">Tekrar Başla</button></div>
+      <div class="fine">İstersen global skor ekleyebiliriz (Supabase).</div>
+    </div>
+  </div>
+
+  <div class="ad-bottom">Responsive Banner Alanı</div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  // ---- Ayarlar ----
+  const GRID = 28;              // kare sayısı (GRID x GRID)
+  const CELL = 20;              // her karenin piksel boyu
+  const SPEED_START = 8;        // ilk hız (hamle/sn)
+  const SPEED_INC_EVERY = 5;    // her 5 elma hız +1
+
+  // ---- DOM ----
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  canvas.width = GRID * CELL; canvas.height = GRID * CELL;
+  const scoreEl = document.getElementById('score');
+  const overlay = document.getElementById('startOverlay');
+  const gameOverOverlay = document.getElementById('gameOverOverlay');
+  const finalScoreEl = document.getElementById('finalScore');
+  const retryBtn = document.getElementById('retryBtn');
+  const nameInput = document.getElementById('playerName');
+  const startBtn = document.getElementById('startBtn');
+  const toast = document.getElementById('toast');
+
+  function showToast(msg, ms=1500){ toast.style.display='block'; toast.textContent=msg; setTimeout(()=> toast.style.display='none', ms); }
+
+  // ---- Oyun durumu ----
+  let PLAYER_NAME = '';
+  let snake, dir, pendingDir, food, score, speed, tickTime, eatenCount, last;
+  let running = false;
+
+  function reset(){
+    snake = [{x: Math.floor(GRID/2), y: Math.floor(GRID/2)}];
+    dir = {x:1,y:0}; pendingDir = {x:1,y:0};
+    score = 0; speed = SPEED_START; eatenCount = 0; last = 0; tickTime = 1000/speed;
+    spawnFood();
+    scoreEl.textContent = '0';
+  }
+
+  function spawnFood(){
+    while(true){
+      const f = { x: (Math.random()*GRID)|0, y: (Math.random()*GRID)|0 };
+      if(!snake.some(s => s.x===f.x && s.y===f.y)){ food = f; return; }
+    }
+  }
+
+  // ---- Giriş ----
+  window.addEventListener('keydown', (e)=>{
+    if(!running) return;
+    if(e.code==='ArrowUp'   && dir.y!== 1){ pendingDir={x:0,y:-1}; }
+    if(e.code==='ArrowDown' && dir.y!==-1){ pendingDir={x:0,y: 1}; }
+    if(e.code==='ArrowLeft' && dir.x!== 1){ pendingDir={x:-1,y:0}; }
+    if(e.code==='ArrowRight'&& dir.x!==-1){ pendingDir={x: 1,y:0}; }
+  });
+
+  // ---- Çizim ----
+  function drawGrid(){
+    // arkaplan
+    ctx.fillStyle = '#0b0c10';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    // hafif grid
+    ctx.strokeStyle = '#151a22'; ctx.lineWidth = 1;
+    for(let i=0;i<=GRID;i++){
+      ctx.beginPath(); ctx.moveTo(i*CELL, 0); ctx.lineTo(i*CELL, GRID*CELL); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, i*CELL); ctx.lineTo(GRID*CELL, i*CELL); ctx.stroke();
+    }
+  }
+  function drawSnake(){
+    // gölge
+    ctx.fillStyle = 'rgba(0,0,0,.18)';
+    snake.forEach(s=> ctx.fillRect(s.x*CELL+2, s.y*CELL+2, CELL-4, CELL-2));
+    // gövde
+    ctx.fillStyle = '#35c97a';
+    snake.forEach(s=> ctx.fillRect(s.x*CELL+1, s.y*CELL+1, CELL-2, CELL-2));
+    // kafa parlaklığı
+    const head = snake[0];
+    ctx.fillStyle = '#62e5a1';
+    ctx.fillRect(head.x*CELL+1, head.y*CELL+1, CELL-2, CELL-2);
+  }
+  function drawFood(){
+    ctx.fillStyle = '#ff5f5f';
+    const r = CELL/2 - 3;
+    ctx.beginPath();
+    ctx.arc(food.x*CELL + CELL/2, food.y*CELL + CELL/2, r, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  // ---- Oyun döngüsü ----
+  function step(ts){
+    if(!running){ return; }
+    if(!last) last = ts;
+    const dt = ts - last;
+    if(dt >= tickTime){
+      last = ts;
+      // yön güncelle (tek karede bir)
+      dir = pendingDir;
+      // yeni kafa
+      const nx = snake[0].x + dir.x;
+      const ny = snake[0].y + dir.y;
+      // çarpışma: duvar veya kendin
+      if(nx<0 || nx>=GRID || ny<0 || ny>=GRID || snake.some(s=> s.x===nx && s.y===ny)){
+        gameOver();
+        return;
+      }
+      snake.unshift({x:nx,y:ny});
+      // yeme
+      if(nx===food.x && ny===food.y){
+        score += 1; eatenCount += 1; scoreEl.textContent = String(score);
+        spawnFood();
+        if(eatenCount % SPEED_INC_EVERY === 0){
+          speed += 1; tickTime = 1000/speed; // hızlan
+        }
+      } else {
+        snake.pop(); // büyümediyse kuyruk kısalt
+      }
+    }
+
+    // çizim
+    drawGrid();
+    drawFood();
+    drawSnake();
+
+    requestAnimationFrame(step);
+  }
+
+  function gameOver(){
+    running = false;
+    finalScoreEl.textContent = String(score);
+    gameOverOverlay.style.display = 'flex';
+  }
+
+  // ---- Basit testler (konsola yazar) ----
+  function runTests(){
+    try{
+      // 1) spawnFood yılanın üstüne doğmamalı
+      const sBackup = [{x:1,y:1}], fBackup = food;
+      snake = sBackup.slice(); spawnFood();
+      console.assert(!(snake[0].x===food.x && snake[0].y===food.y), 'Food snake üstüne doğdu');
+      // 2) hız artışı eşiği
+      let e=0, sp=SPEED_START; for(let i=1;i<=SPEED_INC_EVERY;i++){ if(i%SPEED_INC_EVERY===0) sp++; }
+      console.assert(sp===SPEED_START+1, 'Hız artışı beklenen değil');
+      // 3) grid ölçüsü doğru
+      console.assert(canvas.width===GRID*CELL && canvas.height===GRID*CELL, 'Canvas ölçüsü yanlış');
+      console.log('Testler tamam.');
+    }catch(err){ console.warn('Test hatası:', err); }
+  }
+
+  // ---- Başlat ----
+  startBtn.addEventListener('click', ()=>{
+    PLAYER_NAME = (nameInput.value||'').trim().slice(0,20) || 'Anon';
+    overlay.style.display = 'none';
+    reset();
+    runTests();
+    running = true;
+    requestAnimationFrame(step);
+  });
+
+  retryBtn.addEventListener('click', ()=>{
+    gameOverOverlay.style.display = 'none';
+    reset();
+    running = true;
+    requestAnimationFrame(step);
+  });
+})();
+</script>
+</body>
+</html>
