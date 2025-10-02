@@ -8,16 +8,16 @@
   :root{
     --gap:20px;
     --pad:16px;
-    --cardW: clamp(240px, 20vw, 310px); /* skor kartı: küçültülmüş ve responsive */
+    --cardW: clamp(240px, 20vw, 310px); /* skor kartı: küçük ve responsive */
   }
   *{box-sizing:border-box}
   html,body{
     height:100%; margin:0; background:#0e0f12; color:#e7ebf3;
     font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
-    overflow:hidden; /* sayfayı taşırmıyoruz, biz ölçekliyoruz */
+    overflow:hidden; /* sayfayı taşırmıyoruz, ölçekliyoruz */
   }
 
-  /* Tam ekran düzen: solda oyun, sağda skor kartı. İkisi de merkezde. */
+  /* Tam ekran grid: solda oyun, sağda skor kartı. İkisi de merkezde. */
   .layout{
     height:100vh; width:100vw;
     display:grid;
@@ -35,7 +35,6 @@
     }
   }
 
-  /* Oyun kolonu */
   .game-col{
     height:100%; width:100%;
     display:flex; align-items:center; justify-content:center;
@@ -61,12 +60,12 @@
     display:block;
   }
 
-  /* Skor kartı (küçültülmüş) */
+  /* Skor kartı (küçültülmüş + responsive font) */
   .sidebar{ width:var(--cardW); max-width:92vw; height:80vh; display:flex; align-items:stretch }
   .card{
     background:#181a20; border:1px solid #1f2430; border-radius:16px; padding:14px;
     box-shadow:0 8px 24px rgba(0,0,0,.25); overflow:auto;
-    font-size: clamp(12px, 1.5vw, 14px);  /* metin boyutu da responsive */
+    font-size: clamp(12px, 1.5vw, 14px);
   }
   .card h3{ margin:0 0 8px; font-size: clamp(14px, 1.8vw, 16px) }
   table.lb{ width:100%; border-collapse:collapse }
@@ -102,7 +101,7 @@
   .toast{ position:fixed; right:16px; top:16px; background:#1b1f27; color:#cfe0ff;
     padding:10px 12px; border-radius:10px; border:1px solid #273049; display:none; z-index:20 }
   
-  /* Kısa ekranlarda üst/alt nefes payı artır: reklama alan kalsın */
+  /* Kısa ekranlarda üst/alt nefes payı: reklama alan kalsın */
   @media (max-height: 900px){
     .layout{ padding-top:28px; padding-bottom:28px }
   }
@@ -110,6 +109,7 @@
     .layout{ padding-top:36px; padding-bottom:36px }
   }
 </style>
+<!-- Supabase varsa çalışır; yoksa oyun yine sorunsuz çalışır -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -118,7 +118,6 @@
   <section class="game-col">
     <div class="game-wrap" id="gameWrap">
       <div class="hud">Skor: <span id="score">0</span></div>
-      <!-- Orijinal piksel boyutu; JS ile ölçeklenecek -->
       <canvas id="game" width="560" height="560" role="img" aria-label="Yılan Oyunu"></canvas>
     </div>
   </section>
@@ -178,24 +177,25 @@
   const nameInput = document.getElementById('playerName');
   const startBtn = document.getElementById('startBtn');
   const gameWrap = document.getElementById('gameWrap');
+  const gameCol = document.querySelector('.game-col');
+  const top10gEl = document.getElementById('top10g');
+  const lbStatusEl = document.getElementById('lbStatus');
+
   canvas.width = GRID * CELL; canvas.height = GRID * CELL;
 
   /* ==== Supabase (global skor) ==== */
   const SUPABASE_URL  = window.__SUPABASE_URL  || 'https://obrtgsafmdpztkkckpcx.supabase.co';
   const SUPABASE_ANON = window.__SUPABASE_ANON || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9icnRnc2FmbWRwenRra2NrcGN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzODQzOTksImV4cCI6MjA3NDk2MDM5OX0.yGWrE7kbo1ofi0q_rAeKt4YjS0D0GLwjA8DFQ1SV5Fw';
   let supa = null;
-  try { if (window.supabase) supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, { auth: { persistSession:false } }); } catch(_){}
-
-  const top10gEl = document.getElementById('top10g');
-  const lbStatusEl = document.getElementById('lbStatus');
+  try { if (window.supabase) supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, { auth: { persistSession:false } }); } catch(_){}
 
   function escapeHtml(s){ return String(s).replace(/[&<>\"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
 
   async function lbSubmitGlobal(name, score){
-    if(!supa || score < 2) return; // düşük skorları yazmayalım
+    if(!supa || score < 2) return; // düşük skorları yazma
     try{
       const { error } = await supa.from('scores').insert({ name: (name||'Anon').slice(0,20), score });
-      if(error){ lbStatusEl.textContent='Skor kaydedilemedi.'; }
+      if(error) lbStatusEl.textContent='Skor kaydedilemedi.';
     }catch(_){ lbStatusEl.textContent='Skor kaydedilemedi.'; }
   }
   async function lbLoadGlobal(){
@@ -213,7 +213,7 @@
     dir=pendingDir={x:1,y:0};
     score=0; speed=SPEED_START; eatenCount=0; last=0; tickTime=1000/speed;
     spawnFood(); scoreEl.textContent='0';
-    drawGrid(); // ilk kare
+    drawGrid();
   }
   function spawnFood(){
     while(true){
@@ -293,14 +293,14 @@
     lbSubmitGlobal(PLAYER_NAME,score).then(lbLoadGlobal);
   }
 
-  /* ==== Responsive ölçekleme: oyun alanı her zaman ortada ==== */
+  /* ==== Responsive ölçekleme: oyun alanı hep ortada ==== */
   function fitScale(){
-    // Oyun kolonunun gerçek kullanılabilir alanı
-    const colRect = document.querySelector('.game-col').getBoundingClientRect();
+    // Oyun kolonunun kullanılabilir alanını al
+    const colRect = gameCol.getBoundingClientRect();
 
-    // Oyun alanı çevresinde bırakılacak nefes payı (reklam/başlık için)
+    // Nefes payı (reklam/başlık boşluğu)
     const marginW = 24;
-    const marginH = 140; // üst+alt pay
+    const marginH = 140;
 
     const availW = Math.max(320, colRect.width  - marginW);
     const availH = Math.max(320, colRect.height - marginH);
@@ -308,7 +308,7 @@
     const sx = availW / canvas.width;
     const sy = availH / canvas.height;
 
-    // Ekran yüksekliğine göre ölçek tavanı: laptoplarda bilinçli küçültme
+    // Ekran yüksekliğine göre tavan ölçek: laptoplarda bilinçli küçültme
     const vh = window.innerHeight;
     let cap = 1.0;
     if (vh < 900) cap = 0.85;
@@ -329,7 +329,7 @@
     running = true;
     lbLoadGlobal();
     requestAnimationFrame(step);
-    fitScale();
+    fitScale(); // güvenlik
   }
   startBtn.addEventListener('click', startGame);
   retryBtn.addEventListener('click', ()=>{
