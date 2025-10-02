@@ -260,15 +260,34 @@
   }
 
   /* ==== Responsive ölçekleme ==== */
-  function fitScale(){
-    const wrapRect = gameWrap.getBoundingClientRect();
-    const availW = Math.max(320, wrapRect.width  - 8);
-    const availH = Math.max(320, wrapRect.height - 40); // HUD payı
-    const sx = availW / canvas.width;
-    const sy = availH / canvas.height;
-    const s  = Math.max(0.6, Math.min(sx, sy, 1.0));     // büyük ekranda asla >1 büyütme yok
-    canvas.style.transform = `scale(${s})`;
-  }
+ function fitScale(){
+  const wrapRect = gameWrap.getBoundingClientRect();
+
+  // Oyun çevresinde bırakmak istediğimiz boşluk (reklam/nefes payı)
+  const marginW = 24;           // sağ/sol toplam pay
+  const marginH = 140;          // üst+alt toplam pay (banner için yer)
+
+  const availW = Math.max(320, wrapRect.width  - marginW);
+  const availH = Math.max(320, wrapRect.height - marginH);
+
+  const sx = availW / canvas.width;
+  const sy = availH / canvas.height;
+
+  // --- ÖNEMLİ: Laptop gibi daha kısa ekranlarda bilinçli küçültme tavanı ---
+  // Yüksekliğe göre max ölçek tavanı (reklama yer bıraksın)
+  const vh = window.innerHeight;
+  let cap = 1.0;               // çok geniş/uzun monitörde büyütme yok (1.0)
+  if (vh < 900) cap = 0.85;    // 900px altı: %85
+  if (vh < 820) cap = 0.75;    // 820px altı: %75
+  if (vh < 740) cap = 0.68;    // 740px altı: %68
+  if (vh < 680) cap = 0.60;    // 680px altı: %60
+
+  // Alt sınırı da çok küçülmesin diye 0.5 yapıyoruz
+  const s = Math.max(0.5, Math.min(sx, sy, cap));
+
+  canvas.style.transform = `scale(${s})`;
+}
+
 
   /* ==== START / RETRY ==== */
   function startGame(){
