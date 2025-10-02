@@ -13,7 +13,7 @@
     /* Oyun alanını tam ortala */
     .center { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; position:relative; }
     .hud { position:static; align-self:flex-start; margin:0 0 8px 0; z-index:2; background:rgba(20,22,27,.6); padding:8px 10px; border-radius:10px; font-weight:700; backdrop-filter: blur(4px); }
-    canvas { background:#0b0c10; border:1px solid #1f2430; border-radius:16px; box-shadow: 0 10px 40px rgba(0,0,0,.35); }
+    canvas { background:#0b0c10; border:1px solid #1f2430; border-radius:16px; box-shadow: 0 10px 40px rgba(0,0,0,.35); transform-origin: top left; }
 
     /* Başlangıç ve Game Over overlay */
     .overlay { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg, rgba(9,10,14,.92), rgba(9,10,14,.88)); z-index: 10; padding:16px; }
@@ -108,8 +108,9 @@
 
   // ---- Supabase (Global Leaderboard) ----
   // Bu iki değeri doldur (veya window.__SUPABASE_URL / window.__SUPABASE_ANON olarak sayfada set et)
-  const SUPABASE_URL  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9icnRnc2FmbWRwenRra2NrcGN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzODQzOTksImV4cCI6MjA3NDk2MDM5OX0.yGWrE7kbo1ofi0q_rAeKt4YjS0D0GLwjA8DFQ1SV5Fw';
-  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9icnRnc2FmbWRwenRra2NrcGN4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTM4NDM5OSwiZXhwIjoyMDc0OTYwMzk5fQ.gpAj0VG6zaH02uxMRQZQWnDSIw4sEtDMPob7utpNE18';
+  const SUPABASE_URL  = window.__SUPABASE_URL  || 'https://obrtgsafmdpztkkckpcx.supabase.co';
+  const SUPABASE_ANON = window.__SUPABASE_ANON || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9icnRnc2FmbWRwenRra2NrcGN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzODQzOTksImV4cCI6MjA3NDk2MDM5OX0.yGWrE7kbo1ofi0q_rAeKt4YjS0D0GLwjA8DFQ1SV5Fw';
+
   let supa = null;
   try {
     if (window.supabase && /^https:\/\/.*\.supabase\.co$/.test(SUPABASE_URL) && SUPABASE_ANON && SUPABASE_ANON !== 'YOUR-ANON-KEY') {
@@ -168,12 +169,21 @@
 
   // ---- Giriş ----
   window.addEventListener('keydown', (e)=>{
+    // Scroll'u engelle (ok tuşları ve space)
+    if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) { e.preventDefault(); }
     if(!running) return;
+    const k = e.key.toLowerCase();
+    // Ok tuşları
     if(e.code==='ArrowUp'   && dir.y!== 1){ pendingDir={x:0,y:-1}; }
     if(e.code==='ArrowDown' && dir.y!==-1){ pendingDir={x:0,y: 1}; }
     if(e.code==='ArrowLeft' && dir.x!== 1){ pendingDir={x:-1,y:0}; }
     if(e.code==='ArrowRight'&& dir.x!==-1){ pendingDir={x: 1,y:0}; }
-  });
+    // WASD eşlemesi
+    if(k==='w' && dir.y!== 1){ pendingDir={x:0,y:-1}; }
+    if(k==='s' && dir.y!==-1){ pendingDir={x:0,y: 1}; }
+    if(k==='a' && dir.x!== 1){ pendingDir={x:-1,y:0}; }
+    if(k==='d' && dir.x!==-1){ pendingDir={x: 1,y:0}; }
+  }, {passive:false});
 
   // ---- Çizim ----
   function drawGrid(){
@@ -278,6 +288,22 @@
     if(!window.__lbInterval){ window.__lbInterval = setInterval(lbLoadGlobal, 60000); }
     requestAnimationFrame(step);
   });
+
+  // --- Görsel ölçekleme: ekran boyuna göre canvas'ı ölçekle (oyun mantığı değişmeden)
+  function fitScale(){
+    const sidebar = document.querySelector('.sidebar');
+    const sidebarW = sidebar ? sidebar.clientWidth + 40 : 0; // güvenli boşluk
+    const topH = 90 + 16; // üst banner + boşluk
+    const bottomH = 90 + 16; // alt banner + boşluk
+    const maxW = Math.max(320, window.innerWidth - sidebarW - 48);
+    const maxH = Math.max(320, window.innerHeight - topH - bottomH - 48);
+    const sx = maxW / canvas.width;
+    const sy = maxH / canvas.height;
+    const s = Math.min(sx, sy, 1.4); // çok büyütmeyi sınırlıyoruz
+    canvas.style.transform = `scale(${s})`;
+  }
+  fitScale();
+  window.addEventListener('resize', fitScale);
 
   retryBtn.addEventListener('click', ()=>{
     gameOverOverlay.style.display = 'none';
