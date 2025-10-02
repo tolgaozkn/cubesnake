@@ -217,21 +217,7 @@
   }
   ctx.stroke();
 
-  // Her 2 karede bir (SEMI-MAJOR): bir tık daha kalın ve açık
-  ctx.strokeStyle = '#485a78';
-  ctx.lineWidth   = 2.0;
-  ctx.beginPath();
-  for (let i = 0; i <= GRID; i += 2) {
-    const x = i * CELL + ox;
-    const y = i * CELL + ox;
-    // Dikey
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, GRID * CELL);
-    // Yatay
-    ctx.moveTo(0, y);
-    ctx.lineTo(GRID * CELL, y);
-  }
-  ctx.stroke();
+
 
   // Dış kalın çerçeve (oyun alanını çerçeveler)
 ctx.save();
