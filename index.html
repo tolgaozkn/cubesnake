@@ -6,7 +6,6 @@
 <title>Cube Snake</title>
 <style>
   :root{
-    --titleH: 72px;      /* JS anlık yüksekliğe göre güncelleyecek */
     --gap: 20px;
     --pad: 16px;
   }
@@ -14,61 +13,69 @@
   html,body{
     height:100%; margin:0; background:#0e0f12; color:#e7ebf3;
     font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
-    overflow:hidden; /* sayfa scroll yok, içerik ölçekleniyor */
+    overflow:hidden; /* sayfa scroll yok, her şey sığdırılıyor */
   }
 
-  /* Üst başlık */
-  header{
-    height:var(--titleH);
-    display:flex; align-items:center; justify-content:center;
-    padding:8px 12px;
-    position:fixed; inset:0 0 auto 0; z-index:5; background:transparent;
-    pointer-events:none;
+  /* Tam ekran grid: sol sütunda oyun, sağda skor kartı; her şey DİKEY ve YATAY merkeze hizalı */
+  .layout{
+    height:100vh;
+    display:grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: var(--gap);
+    align-items:center;       /* dikey ortalama */
+    justify-items:center;     /* yatay ortalama */
+    padding: var(--pad);
   }
-  #titleCanvas{display:block; filter:drop-shadow(0 2px 4px rgba(0,0,0,.45))}
-
-  /* Ana düzen: başlığın altında, tüm ekranı kaplar */
-.layout{
-  position:fixed;
-  top:calc(var(--titleH) + 0px);   /* başlıkla boşluğu kısalttık */
-  left:0; right:0; bottom:0;
-  padding: var(--pad);
-  display:grid;
-  grid-template-columns: 1fr 340px;
-  grid-auto-rows: 1fr;
-  gap: var(--gap);
-  align-items:start;               /* merkez yerine tepe hizası */
-  justify-items:center;
-}
   @media (max-width:1200px){
     .layout{
-      grid-template-columns: 1fr;       /* darda dikey */
+      grid-template-columns: 1fr;      /* dar ekranda alt alta */
       grid-template-rows: 1fr auto;
-      align-items:start;
-      justify-items:center;
     }
   }
 
-  /* Oyun merkezleyici */
-  .game-wrap{
-    width:100%; height:100%;
-    display:flex; align-items:center; justify-content:center;
-    position:relative; min-height:280px; min-width:280px;
+  /* Oyun sütunu: başlık + oyun alanı */
+  .game-col{
+    width:100%;
+    height:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;   /* oyun+başlık birlikte dikey ortalansın */
+    min-width:320px;
+    min-height:320px;
   }
+
+  /* Küçük başlık */
+  .title{
+    pointer-events:none;
+    margin-bottom:8px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  #titleCanvas{display:block; filter:drop-shadow(0 1px 2px rgba(0,0,0,.45))}
+
+  /* Oyun alanı sarmalayıcı */
+  .game-wrap{
+    position:relative;
+    display:flex; align-items:center; justify-content:center;
+    width:min(90vw, 900px);
+    height:min(78vh, 800px); /* reklam ve skor kartı için dikey boşluk bırakalım */
+  }
+
+  /* Skor etiketi: canvas’ın hemen üst-sol köşesi */
   .hud{
-  position:absolute; top:-24px; left:0;  /* -32 → -24 */
-  transform:none;
-  background:rgba(20,22,27,.6);
-  padding:8px 10px; border-radius:10px;
-  font-weight:700; backdrop-filter: blur(4px);
-}
+    position:absolute; left:0; top:-22px;
+    background:rgba(20,22,27,.65); padding:6px 10px; border-radius:10px;
+    font-weight:700; backdrop-filter: blur(4px);
+  }
+
+  /* Canvas */
   canvas#game{
     background:#0b0c10; border:1px solid #1f2430; border-radius:0;
     transform-origin:top left; box-shadow:0 10px 40px rgba(0,0,0,.35)
   }
 
   /* Skor kartı */
-  .sidebar{width:340px; max-width:92vw; height:100%; display:flex; align-items:stretch}
+  .sidebar{width:360px; max-width:92vw; height:80vh; display:flex; align-items:stretch}
   .card{background:#181a20; border:1px solid #1f2430; border-radius:16px; padding:16px; box-shadow:0 8px 24px rgba(0,0,0,.25); overflow:auto}
   .card h3{margin:0 0 8px; font-size:16px}
   table.lb{width:100%; border-collapse:collapse; font-size:14px}
@@ -85,21 +92,21 @@
   .row input[type="text"]{width:100%; padding:12px 14px; border-radius:10px; border:1px solid #2a2e36; background:#0f1116; color:#e7ebf3; outline:none}
   .row button{width:100%; padding:12px; border:0; border-radius:12px; background:#4f7cff; color:#fff; font-weight:800; cursor:pointer; margin-top:10px}
 
-  .toast{position:fixed; right:16px; top:calc(var(--titleH) + 12px); background:#1b1f27; color:#cfe0ff; padding:10px 12px; border-radius:10px; border:1px solid #273049; display:none; z-index:20}
+  .toast{position:fixed; right:16px; top:16px; background:#1b1f27; color:#cfe0ff; padding:10px 12px; border-radius:10px; border:1px solid #273049; display:none; z-index:20}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
-<header>
-  <canvas id="titleCanvas" aria-hidden="true"></canvas>
-</header>
-
 <main class="layout" aria-label="Ana düzen">
-  <div class="game-wrap" id="gameWrap">
-    <div class="hud">Skor: <span id="score">0</span></div>
-    <canvas id="game" width="560" height="560" role="img" aria-label="Yılan Oyunu"></canvas>
-  </div>
+  <section class="game-col">
+    <div class="title"><canvas id="titleCanvas" aria-hidden="true"></canvas></div>
+
+    <div class="game-wrap" id="gameWrap">
+      <div class="hud">Skor: <span id="score">0</span></div>
+      <canvas id="game" width="560" height="560" role="img" aria-label="Yılan Oyunu"></canvas>
+    </div>
+  </section>
 
   <aside class="sidebar">
     <div class="card" aria-label="Global Skor Tablosu">
@@ -142,7 +149,7 @@
   'use strict';
 
   /* ==== Ayarlar ==== */
-  const GRID = 28, CELL = 20;
+  const GRID = 28, CELL = 20;                       // temel grid
   const SPEED_START = 8, SPEED_INC_EVERY = 5;
 
   /* ==== DOM ==== */
@@ -234,8 +241,8 @@
   }
   function gameOver(){ running=false; finalScoreEl.textContent=String(score); gameOverOverlay.style.display='flex'; lbSubmitGlobal(PLAYER_NAME,score).then(lbLoadGlobal); }
 
-  /* ==== Küp başlık ==== */
-  window.BLOCK_FONT = {
+  /* ==== Küçük logo (küp yazı) ==== */
+  const BLOCK_FONT={
     'A':['01110','10001','10001','11111','10001','10001','10001'],
     'B':['11110','10001','11110','10001','10001','10001','11110'],
     'C':['01111','10000','10000','10000','10000','10000','01111'],
@@ -246,67 +253,43 @@
     'U':['10001','10001','10001','10001','10001','10001','01110'],
     ' ':['00000','00000','00000','00000','00000','00000','00000']
   };
-
-  function renderTitle(text='CUBE SNAKE'){
-    const t = document.getElementById('titleCanvas'); if(!t) return;
-    const c = t.getContext('2d');
-
-    // Küçük başlık: ekran genişliğine göre ~7–10px küp
-    const vw   = Math.max(360, Math.min(window.innerWidth, 1600));
-    const size = Math.max(7, Math.min(10, Math.floor(vw / 160)));
-    const gap  = Math.max(2, Math.floor(size * 0.25));
-
-    const BF = window.BLOCK_FONT;
-    const letterW = 5 * (size + gap) - gap;
-    const letterH = 7 * (size + gap) - gap;
-    const spacing = Math.max(gap * 2, 10);
-    const patterns = text.split('').map(ch => BF[ch] || BF[' ']);
-
-    const W = patterns.length * letterW + (patterns.length - 1) * spacing;
-    const H = letterH;
-
-    t.width = W; t.height = H; c.clearRect(0,0,W,H);
-
-    const fill = '#78a6ff', stroke = '#223252';
-    let x = 0;
-    for(const p of patterns){
-      for(let r=0;r<p.length;r++){
-        for(let q=0;q<p[r].length;q++){
-          if(p[r][q] === '1'){
-            const px = x + q * (size + gap);
-            const py = r * (size + gap);
-            c.fillStyle = fill; c.fillRect(px,py,size,size);
-            c.strokeStyle = stroke; c.lineWidth = Math.max(1, Math.floor(size*0.12));
-            c.strokeRect(px+0.5,py+0.5,size-1,size-1);
-          }
-        }
-      }
-      x += letterW + spacing;
+  function drawBlockLetter(tctx, p, x, y, size, gap, fill, stroke){
+    for(let r=0;r<p.length;r++) for(let c=0;c<p[r].length;c++) if(p[r][c]==='1'){
+      const px=x+c*(size+gap), py=y+r*(size+gap);
+      tctx.fillStyle=fill; tctx.fillRect(px,py,size,size);
+      tctx.strokeStyle=stroke; tctx.lineWidth=Math.max(1,Math.floor(size*0.12)); tctx.strokeRect(px+0.5,py+0.5,size-1,size-1);
     }
-
-    // Başlığın gerçek yüksekliğini üst pad olarak kullan
-    document.documentElement.style.setProperty('--titleH', (H + 16) + 'px');
+  }
+  function renderTitle(text='CUBE SNAKE'){
+    const t=document.getElementById('titleCanvas'); if(!t) return; const c=t.getContext('2d');
+    const vw=Math.max(360, Math.min(window.innerWidth, 1600));
+    const size=Math.max(6, Math.min(9, Math.floor(vw/190)));   /* DAHA KÜÇÜK */
+    const gap =Math.max(2, Math.floor(size*0.25));
+    const letterW=5*(size+gap)-gap, letterH=7*(size+gap)-gap, spacing=Math.max(gap*2,10);
+    const patterns=text.split('').map(ch=>BLOCK_FONT[ch]||BLOCK_FONT[' ']);
+    const W=patterns.length*letterW+(patterns.length-1)*spacing, H=letterH;
+    t.width=W; t.height=H; c.clearRect(0,0,W,H);
+    const fill='#78a6ff', stroke='#223252'; let x=0;
+    for(const p of patterns){ drawBlockLetter(c,p,x,0,size,gap,fill,stroke); x+=letterW+spacing; }
   }
 
-  /* ==== Ölçekleme ==== */
+  /* ==== Ölçekleme: canvas küçük kalsın, sayfada tam ortalansın ==== */
   function fitScale(){
-    // CSS değişkeninden başlık yüksekliği
-    const titleH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--titleH')) || 0;
+    // Oyun sütunundaki görünür alan
+    const container = document.querySelector('.game-col');
+    const r = container.getBoundingClientRect();
 
-    const pad = 16, gap = 20;
-    const isWide = window.innerWidth >= 1200;
+    // Başlık + HUD boşluğu düşün
+    const titleH = document.getElementById('titleCanvas')?.height || 0;
+    const hudH   = 22; // küçük yastık
 
-    // Sidebar genişliği (yalnızca geniş ekranlarda yana koyuyoruz)
-    const sidebar = document.querySelector('.sidebar');
-    const sidebarW = (isWide && sidebar) ? (sidebar.getBoundingClientRect().width + gap) : 0;
+    // Maks hedef boyutlar (özellikle büyük ekranlarda küçült!)
+    const maxTargetW = Math.min(560, r.width  * 0.70);  // genişliğin %70'i, 560px'i geçmesin
+    const maxTargetH = Math.min(560, (r.height - titleH - hudH) * 0.70);
 
-    // Kullanılabilir alan
-    const availW = Math.max(320, window.innerWidth  - (pad*2) - sidebarW);
-    const availH = Math.max(320, window.innerHeight - (pad*2) - titleH);
-
-    const sx = availW / canvas.width;
-    const sy = availH / canvas.height;
-    const s  = Math.max(0.5, Math.min(sx, sy, 2));
+    const sx = maxTargetW / canvas.width;
+    const sy = maxTargetH / canvas.height;
+    const s  = Math.max(0.6, Math.min(sx, sy, 1.0));    // asla 1.0'dan büyük değil → KÜÇÜK KALSIN
 
     canvas.style.transform = `scale(${s})`;
   }
@@ -321,16 +304,7 @@
 
   // İlk çizimler
   renderTitle('CUBE SNAKE'); fitScale();
-
-  // Yeniden boyutlandırma
-  window.addEventListener('resize', () => { renderTitle('CUBE SNAKE'); fitScale(); });
-
-  // Sidebar ölçüsü değişirse yeniden ölçekle
-  if (window.ResizeObserver){
-    const ro = new ResizeObserver(() => fitScale());
-    const sb = document.querySelector('.sidebar');
-    if (sb) ro.observe(sb);
-  }
+  window.addEventListener('resize', ()=>{ renderTitle('CUBE SNAKE'); fitScale(); });
 
 })();
 </script>
