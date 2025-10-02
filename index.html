@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v1.1.1: fix SyntaxError (stray `]` & duplicated lines after runTests); keep global Top10 via Supabase -->
+<!-- v1.1.2: fix SyntaxError (stray brackets/duplicates), keep tests & Supabase Top10 -->
 <html lang="tr">
 <head>
   <meta charset="UTF-8" />
@@ -23,6 +23,7 @@
     .row { margin-top:12px; }
     .row input[type="text"] { width:100%; padding:12px 14px; border-radius:10px; border:1px solid #2a2e36; background:#0f1116; color:#e7ebf3; outline:none; }
     .row button { width:100%; padding:12px; border:0; border-radius:12px; background:#4f7cff; color:#fff; font-weight:800; cursor:pointer; margin-top:10px; }
+    .fine { font-size:12px; opacity:.7; margin-top:8px; }
 
     .toast { position:fixed; right:16px; top:16px; background:#1b1f27; color:#cfe0ff; padding:10px 12px; border-radius:10px; border:1px solid #273049; display:none; z-index: 20; }
     .ad-top { position:fixed; left:50%; transform:translateX(-50%); top:8px; width:min(100%, 970px); height:90px; background:#0b0c10; border:1px dashed #2a2e36; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#8c93a3; z-index:30; }
@@ -85,6 +86,7 @@
 
 <script>
 (() => {
+  'use strict';
   // ---- Ayarlar ----
   const GRID = 28;              // kare sayısı (GRID x GRID)
   const CELL = 20;              // her karenin piksel boyu
@@ -108,7 +110,6 @@
   // Bu iki değeri doldur (veya window.__SUPABASE_URL / window.__SUPABASE_ANON olarak sayfada set et)
   const SUPABASE_URL  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9icnRnc2FmbWRwenRra2NrcGN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzODQzOTksImV4cCI6MjA3NDk2MDM5OX0.yGWrE7kbo1ofi0q_rAeKt4YjS0D0GLwjA8DFQ1SV5Fw';
   const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9icnRnc2FmbWRwenRra2NrcGN4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTM4NDM5OSwiZXhwIjoyMDc0OTYwMzk5fQ.gpAj0VG6zaH02uxMRQZQWnDSIw4sEtDMPob7utpNE18';
-
   let supa = null;
   try {
     if (window.supabase && /^https:\/\/.*\.supabase\.co$/.test(SUPABASE_URL) && SUPABASE_ANON && SUPABASE_ANON !== 'YOUR-ANON-KEY') {
@@ -128,9 +129,8 @@
       const { error } = await supa.from('scores').insert({ name: (name||'Anon').slice(0,20), score });
       if(error){ console.warn('LB insert error:', error); lbStatusEl.textContent = 'Skor kaydedilemedi.'; }
     }catch(e){ console.warn('LB insert fail:', e); lbStatusEl.textContent = 'Skor kaydedilemedi.'; }
-  });
-    }catch(e){ lbStatusEl.textContent = 'Skor kaydedilemedi.'; }
   }
+
   async function lbLoadGlobal(){
     if(!supa){
       const reason = (!window.supabase) ? 'Supabase JS yüklenemedi' : (SUPABASE_URL.includes('YOUR-PROJECT-ref') || SUPABASE_ANON === 'YOUR-ANON-KEY') ? 'Anahtar/URL girilmedi' : 'Bilinmeyen';
@@ -143,11 +143,7 @@
     if(!data || data.length===0){ top10gEl.innerHTML = '<tr><td colspan="3">Henüz skor yok</td></tr>'; return; }
     top10gEl.innerHTML = data.map((r,i)=> `<tr><td>${i+1}</td><td>${escapeHtml(r.name||'Anon')}</td><td>${r.score}</td></tr>`).join('');
   }
-    const { data, error } = await supa.from('scores').select('name, score').order('score', {ascending:false}).limit(10);
-    if(error){ top10gEl.innerHTML = '<tr><td colspan="3">Hata: veri alınamadı</td></tr>'; return; }
-    if(!data || data.length===0){ top10gEl.innerHTML = '<tr><td colspan="3">Henüz skor yok</td></tr>'; return; }
-    top10gEl.innerHTML = data.map((r,i)=> `<tr><td>${i+1}</td><td>${escapeHtml(r.name||'Anon')}</td><td>${r.score}</td></tr>`).join('');
-  }
+
   function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
 
   // ---- Oyun durumu ----
@@ -181,10 +177,8 @@
 
   // ---- Çizim ----
   function drawGrid(){
-    // arkaplan
     ctx.fillStyle = '#0b0c10';
     ctx.fillRect(0,0,canvas.width,canvas.height);
-    // hafif grid
     ctx.strokeStyle = '#151a22'; ctx.lineWidth = 1;
     for(let i=0;i<=GRID;i++){
       ctx.beginPath(); ctx.moveTo(i*CELL, 0); ctx.lineTo(i*CELL, GRID*CELL); ctx.stroke();
@@ -192,13 +186,10 @@
     }
   }
   function drawSnake(){
-    // gölge
     ctx.fillStyle = 'rgba(0,0,0,.18)';
     snake.forEach(s=> ctx.fillRect(s.x*CELL+2, s.y*CELL+2, CELL-4, CELL-2));
-    // gövde
     ctx.fillStyle = '#35c97a';
     snake.forEach(s=> ctx.fillRect(s.x*CELL+1, s.y*CELL+1, CELL-2, CELL-2));
-    // kafa parlaklığı
     const head = snake[0];
     ctx.fillStyle = '#62e5a1';
     ctx.fillRect(head.x*CELL+1, head.y*CELL+1, CELL-2, CELL-2);
@@ -218,30 +209,25 @@
     const dt = ts - last;
     if(dt >= tickTime){
       last = ts;
-      // yön güncelle (tek karede bir)
       dir = pendingDir;
-      // yeni kafa
       const nx = snake[0].x + dir.x;
       const ny = snake[0].y + dir.y;
-      // çarpışma: duvar veya kendin
       if(nx<0 || nx>=GRID || ny<0 || ny>=GRID || snake.some(s=> s.x===nx && s.y===ny)){
         gameOver();
         return;
       }
       snake.unshift({x:nx,y:ny});
-      // yeme
       if(nx===food.x && ny===food.y){
         score += 1; eatenCount += 1; scoreEl.textContent = String(score);
         spawnFood();
         if(eatenCount % SPEED_INC_EVERY === 0){
-          speed += 1; tickTime = 1000/speed; // hızlan
+          speed += 1; tickTime = 1000/speed;
         }
       } else {
-        snake.pop(); // büyümediyse kuyruk kısalt
+        snake.pop();
       }
     }
 
-    // çizim
     drawGrid();
     drawFood();
     drawSnake();
