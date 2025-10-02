@@ -6,22 +6,26 @@
 <title>Cube Snake</title>
 <style>
   :root{
-    --titleH: 72px;      /* JS ile clamp edilir */
+    --titleH: 72px;      /* JS anlık yüksekliğe göre güncelleyecek */
     --gap: 20px;
     --pad: 16px;
   }
   *{box-sizing:border-box}
-  html,body{height:100%;margin:0;background:#0e0f12;color:#e7ebf3;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;overflow:hidden}
+  html,body{
+    height:100%; margin:0; background:#0e0f12; color:#e7ebf3;
+    font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+    overflow:hidden; /* sayfa scroll yok, içerik ölçekleniyor */
+  }
 
   /* Üst başlık */
   header{
     height:var(--titleH);
-    display:flex;align-items:center;justify-content:center;
+    display:flex; align-items:center; justify-content:center;
     padding:8px 12px;
     position:fixed; inset:0 0 auto 0; z-index:5; background:transparent;
     pointer-events:none;
   }
-  #titleCanvas{display:block;filter:drop-shadow(0 2px 4px rgba(0,0,0,.45))}
+  #titleCanvas{display:block; filter:drop-shadow(0 2px 4px rgba(0,0,0,.45))}
 
   /* Ana düzen: başlığın altında, tüm ekranı kaplar */
   .layout{
@@ -47,37 +51,39 @@
 
   /* Oyun merkezleyici */
   .game-wrap{
-    width:100%;
-    height:100%;
-    display:flex;align-items:center;justify-content:center;
-    min-height:280px; min-width:280px;
+    width:100%; height:100%;
+    display:flex; align-items:center; justify-content:center;
+    position:relative; min-height:280px; min-width:280px;
   }
   .hud{
-    position:absolute; left:calc(50% - 280px); transform:translateX(-100%);
-    top:calc(var(--pad) + 6px);
+    position:absolute; top:-32px; left:0; transform:none;
     background:rgba(20,22,27,.6); padding:8px 10px; border-radius:10px;
     font-weight:700; backdrop-filter: blur(4px);
   }
-  canvas#game{background:#0b0c10;border:1px solid #1f2430;border-radius:0;transform-origin:top left;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+  canvas#game{
+    background:#0b0c10; border:1px solid #1f2430; border-radius:0;
+    transform-origin:top left; box-shadow:0 10px 40px rgba(0,0,0,.35)
+  }
 
   /* Skor kartı */
-  .sidebar{width:340px;max-width:92vw;height:100%;display:flex;align-items:stretch}
-  .card{background:#181a20;border:1px solid #1f2430;border-radius:16px;padding:16px;box-shadow:0 8px 24px rgba(0,0,0,.25);overflow:auto}
-  .card h3{margin:0 0 8px;font-size:16px}
-  table.lb{width:100%;border-collapse:collapse;font-size:14px}
-  table.lb th,table.lb td{padding:6px 8px;border-bottom:1px solid #242833;text-align:left}
+  .sidebar{width:340px; max-width:92vw; height:100%; display:flex; align-items:stretch}
+  .card{background:#181a20; border:1px solid #1f2430; border-radius:16px; padding:16px; box-shadow:0 8px 24px rgba(0,0,0,.25); overflow:auto}
+  .card h3{margin:0 0 8px; font-size:16px}
+  table.lb{width:100%; border-collapse:collapse; font-size:14px}
+  table.lb th,table.lb td{padding:6px 8px; border-bottom:1px solid #242833; text-align:left}
   table.lb th:nth-child(1),table.lb td:nth-child(1){width:60px}
-  table.lb th:nth-child(3),table.lb td:nth-child(3){text-align:right;width:80px}
+  table.lb th:nth-child(3),table.lb td:nth-child(3){text-align:right; width:80px}
+  .fine{font-size:12px; opacity:.75}
 
   /* Overlays */
-  .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,rgba(9,10,14,.92),rgba(9,10,14,.88));z-index:10;padding:16px}
-  .form{width:min(92vw,420px);background:#181a20;border:1px solid #232937;color:#e7ebf3;border-radius:16px;padding:20px;box-shadow:0 14px 36px rgba(0,0,0,.4)}
-  .form h1{margin:0 0 6px;font-size:20px}
+  .overlay{position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg,rgba(9,10,14,.92),rgba(9,10,14,.88)); z-index:10; padding:16px}
+  .form{width:min(92vw,420px); background:#181a20; border:1px solid #232937; color:#e7ebf3; border-radius:16px; padding:20px; box-shadow:0 14px 36px rgba(0,0,0,.4)}
+  .form h1{margin:0 0 6px; font-size:20px}
   .row{margin-top:12px}
-  .row input[type="text"]{width:100%;padding:12px 14px;border-radius:10px;border:1px solid #2a2e36;background:#0f1116;color:#e7ebf3;outline:none}
-  .row button{width:100%;padding:12px;border:0;border-radius:12px;background:#4f7cff;color:#fff;font-weight:800;cursor:pointer;margin-top:10px}
+  .row input[type="text"]{width:100%; padding:12px 14px; border-radius:10px; border:1px solid #2a2e36; background:#0f1116; color:#e7ebf3; outline:none}
+  .row button{width:100%; padding:12px; border:0; border-radius:12px; background:#4f7cff; color:#fff; font-weight:800; cursor:pointer; margin-top:10px}
 
-  .toast{position:fixed;right:16px;top:calc(var(--titleH) + 12px);background:#1b1f27;color:#cfe0ff;padding:10px 12px;border-radius:10px;border:1px solid #273049;display:none;z-index:20}
+  .toast{position:fixed; right:16px; top:calc(var(--titleH) + 12px); background:#1b1f27; color:#cfe0ff; padding:10px 12px; border-radius:10px; border:1px solid #273049; display:none; z-index:20}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -161,6 +167,7 @@
   const top10gEl = document.getElementById('top10g');
   const lbStatusEl = document.getElementById('lbStatus');
 
+  function escapeHtml(s){ return String(s).replace(/[&<>\"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
   function showToast(msg, ms=1500){ toast.style.display='block'; toast.textContent=msg; setTimeout(()=> toast.style.display='none', ms); }
 
   async function lbSubmitGlobal(name, score){
@@ -177,7 +184,6 @@
     if(!data?.length){ top10gEl.innerHTML='<tr><td colspan="3">Henüz skor yok</td></tr>'; return; }
     top10gEl.innerHTML = data.map((r,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(r.name||'Anon')}</td><td>${r.score}</td></tr>`).join('');
   }
-  function escapeHtml(s){ return String(s).replace(/[&<>\"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
 
   /* ==== Oyun Durumu ==== */
   let PLAYER_NAME='', snake, dir, pendingDir, food, score, speed, tickTime, eatenCount, last, running=false;
@@ -227,7 +233,7 @@
   function gameOver(){ running=false; finalScoreEl.textContent=String(score); gameOverOverlay.style.display='flex'; lbSubmitGlobal(PLAYER_NAME,score).then(lbLoadGlobal); }
 
   /* ==== Küp başlık ==== */
-  const BLOCK_FONT={
+  window.BLOCK_FONT = {
     'A':['01110','10001','10001','11111','10001','10001','10001'],
     'B':['11110','10001','11110','10001','10001','10001','11110'],
     'C':['01111','10000','10000','10000','10000','10000','01111'],
@@ -238,33 +244,68 @@
     'U':['10001','10001','10001','10001','10001','10001','01110'],
     ' ':['00000','00000','00000','00000','00000','00000','00000']
   };
-  function drawBlockLetter(tctx,p,x,y,size,gap,fill,stroke){
-    for(let r=0;r<p.length;r++) for(let c=0;c<p[r].length;c++) if(p[r][c]==='1'){ const px=x+c*(size+gap), py=y+r*(size+gap); tctx.fillStyle=fill; tctx.fillRect(px,py,size,size); if(stroke){ tctx.strokeStyle=stroke; tctx.lineWidth=Math.max(1,Math.floor(size*0.12)); tctx.strokeRect(px+0.5,py+0.5,size-1,size-1);} }
-  }
+
   function renderTitle(text='CUBE SNAKE'){
-    const t=document.getElementById('titleCanvas'); if(!t) return; const c=t.getContext('2d');
-    const vw=Math.max(360,Math.min(window.innerWidth*0.9,1000));
-    const size=Math.max(8, Math.min(14, Math.floor(vw/80)));  // KÜÇÜLTÜLDÜ
-    const gap =Math.max(2, Math.floor(size*0.25));
-    const letterW=5*(size+gap)-gap, letterH=7*(size+gap)-gap, spacing=Math.max(gap*2,10);
-    const patterns=text.split('').map(ch=>BLOCK_FONT[ch]||BLOCK_FONT[' ']);
-    const W=patterns.length*letterW+(patterns.length-1)*spacing, H=letterH;
-    t.width=W; t.height=H; c.clearRect(0,0,W,H);
-    const fill='#78a6ff', stroke='#223252'; let x=0;
-    for(const p of patterns){ drawBlockLetter(c,p,x,0,size,gap,fill,stroke); x+=letterW+spacing; }
-    // Sayfa değişkenine başlık yüksekliğini yaz (clamp)
-    const clampH = Math.max(40, Math.min(H, 92));
-    document.documentElement.style.setProperty('--titleH', clampH+'px');
+    const t = document.getElementById('titleCanvas'); if(!t) return;
+    const c = t.getContext('2d');
+
+    // Küçük başlık: ekran genişliğine göre ~7–10px küp
+    const vw   = Math.max(360, Math.min(window.innerWidth, 1600));
+    const size = Math.max(7, Math.min(10, Math.floor(vw / 160)));
+    const gap  = Math.max(2, Math.floor(size * 0.25));
+
+    const BF = window.BLOCK_FONT;
+    const letterW = 5 * (size + gap) - gap;
+    const letterH = 7 * (size + gap) - gap;
+    const spacing = Math.max(gap * 2, 10);
+    const patterns = text.split('').map(ch => BF[ch] || BF[' ']);
+
+    const W = patterns.length * letterW + (patterns.length - 1) * spacing;
+    const H = letterH;
+
+    t.width = W; t.height = H; c.clearRect(0,0,W,H);
+
+    const fill = '#78a6ff', stroke = '#223252';
+    let x = 0;
+    for(const p of patterns){
+      for(let r=0;r<p.length;r++){
+        for(let q=0;q<p[r].length;q++){
+          if(p[r][q] === '1'){
+            const px = x + q * (size + gap);
+            const py = r * (size + gap);
+            c.fillStyle = fill; c.fillRect(px,py,size,size);
+            c.strokeStyle = stroke; c.lineWidth = Math.max(1, Math.floor(size*0.12));
+            c.strokeRect(px+0.5,py+0.5,size-1,size-1);
+          }
+        }
+      }
+      x += letterW + spacing;
+    }
+
+    // Başlığın gerçek yüksekliğini üst pad olarak kullan
+    document.documentElement.style.setProperty('--titleH', (H + 16) + 'px');
   }
 
   /* ==== Ölçekleme ==== */
   function fitScale(){
-    // gameWrap (grid hücresi) içinde kullanılabilir alan:
-    const rect = gameWrap.getBoundingClientRect();
-    const availW = Math.max(320, rect.width  - 8);
-    const availH = Math.max(320, rect.height - 8);
-    const sx = availW / canvas.width, sy = availH / canvas.height;
+    // CSS değişkeninden başlık yüksekliği
+    const titleH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--titleH')) || 0;
+
+    const pad = 16, gap = 20;
+    const isWide = window.innerWidth >= 1200;
+
+    // Sidebar genişliği (yalnızca geniş ekranlarda yana koyuyoruz)
+    const sidebar = document.querySelector('.sidebar');
+    const sidebarW = (isWide && sidebar) ? (sidebar.getBoundingClientRect().width + gap) : 0;
+
+    // Kullanılabilir alan
+    const availW = Math.max(320, window.innerWidth  - (pad*2) - sidebarW);
+    const availH = Math.max(320, window.innerHeight - (pad*2) - titleH);
+
+    const sx = availW / canvas.width;
+    const sy = availH / canvas.height;
     const s  = Math.max(0.5, Math.min(sx, sy, 2));
+
     canvas.style.transform = `scale(${s})`;
   }
 
@@ -278,14 +319,17 @@
 
   // İlk çizimler
   renderTitle('CUBE SNAKE'); fitScale();
-  window.addEventListener('resize', ()=>{ renderTitle('CUBE SNAKE'); fitScale(); });
 
-  // ufak testler (sessiz)
-  (function tests(){ try{
-    const fake = Array.from({length:10},(_,i)=>({name:'N'+i,score:i}));
-    const html = fake.map((r,i)=>`<tr><td>${i+1}</td><td>${r.name}</td><td>${r.score}</td></tr>`).join('');
-    console.assert((html.match(/<tr>/g)||[]).length===10,'Top10 10 satır üretmedi');
-  }catch(_){}})();
+  // Yeniden boyutlandırma
+  window.addEventListener('resize', () => { renderTitle('CUBE SNAKE'); fitScale(); });
+
+  // Sidebar ölçüsü değişirse yeniden ölçekle
+  if (window.ResizeObserver){
+    const ro = new ResizeObserver(() => fitScale());
+    const sb = document.querySelector('.sidebar');
+    if (sb) ro.observe(sb);
+  }
+
 })();
 </script>
 </body>
