@@ -192,43 +192,43 @@
     if(k==='d' && dir.x!==-1){ pendingDir={x: 1,y:0}; }
   }, {passive:false});
 
-  // ---- Çizim ----
   function drawGrid() {
   // Zemin
   ctx.fillStyle = '#0b0c10';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Piksel hizalama için 0.5 ofset (çizgiler jilet gibi net dursun)
+  // Jilet gibi çizgi için piksel hizalama
   const ox = 0.5;
 
-  // Tüm kare çizgileri (MINOR): daha koyu ve kalın
-  ctx.strokeStyle = '#324055';   // belirgin koyu mavi-gri
-  ctx.lineWidth   = 1.6;
+  // TÜM çizgiler: aynı kalınlık ve belirgin renk
+  ctx.strokeStyle = '#6a7fa3';  // görünürlüğü artırmak için açık mavi-gri
+  ctx.lineWidth   = 2.6;        // tüm çizgilerde bu kalınlık
+  ctx.lineCap     = 'butt';
+  ctx.lineJoin    = 'miter';
+
   ctx.beginPath();
   for (let i = 0; i <= GRID; i++) {
     const x = i * CELL + ox;
     const y = i * CELL + ox;
-    // Dikey
+    // Dikey çizgi
     ctx.moveTo(x, 0);
     ctx.lineTo(x, GRID * CELL);
-    // Yatay
+    // Yatay çizgi
     ctx.moveTo(0, y);
     ctx.lineTo(GRID * CELL, y);
   }
   ctx.stroke();
 
-
-
-  // Dış kalın çerçeve (oyun alanını çerçeveler)
-ctx.save();
-ctx.lineJoin = 'miter';   // köşe birleşimleri keskin
-ctx.lineCap  = 'butt';    // çizgi uçları kesik/keskin
-ctx.strokeStyle = '#90a8cf';
-ctx.lineWidth   = 3.4;
-ctx.strokeRect(0.5, 0.5, canvas.width - 1, canvas.height - 1);
-ctx.restore();
-
+  // Dış kalın çerçeve (köşeler keskin)
+  ctx.save();
+  ctx.strokeStyle = '#90a8cf';
+  ctx.lineWidth   = 3.4;
+  ctx.lineJoin    = 'miter';
+  ctx.lineCap     = 'butt';
+  ctx.strokeRect(ox, ox, canvas.width - 1, canvas.height - 1);
+  ctx.restore();
 }
+
 
   function drawSnake(){
     ctx.fillStyle = 'rgba(0,0,0,.18)';
