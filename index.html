@@ -56,10 +56,12 @@
     position:relative; min-height:280px; min-width:280px;
   }
   .hud{
-    position:absolute; top:-32px; left:0; transform:none;
-    background:rgba(20,22,27,.6); padding:8px 10px; border-radius:10px;
-    font-weight:700; backdrop-filter: blur(4px);
-  }
+  position:absolute; top:-24px; left:0;  /* -32 → -24 */
+  transform:none;
+  background:rgba(20,22,27,.6);
+  padding:8px 10px; border-radius:10px;
+  font-weight:700; backdrop-filter: blur(4px);
+}
   canvas#game{
     background:#0b0c10; border:1px solid #1f2430; border-radius:0;
     transform-origin:top left; box-shadow:0 10px 40px rgba(0,0,0,.35)
