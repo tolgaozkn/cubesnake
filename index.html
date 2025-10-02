@@ -28,18 +28,18 @@
   #titleCanvas{display:block; filter:drop-shadow(0 2px 4px rgba(0,0,0,.45))}
 
   /* Ana düzen: başlığın altında, tüm ekranı kaplar */
-  .layout{
-    position:fixed;
-    top:calc(var(--titleH) + 8px);
-    left:0; right:0; bottom:0;
-    padding: var(--pad);
-    display:grid;
-    grid-template-columns: 1fr 340px;   /* genişte yanyana */
-    grid-auto-rows: 1fr;
-    gap: var(--gap);
-    align-items:center;
-    justify-items:center;
-  }
+.layout{
+  position:fixed;
+  top:calc(var(--titleH) + 0px);   /* başlıkla boşluğu kısalttık */
+  left:0; right:0; bottom:0;
+  padding: var(--pad);
+  display:grid;
+  grid-template-columns: 1fr 340px;
+  grid-auto-rows: 1fr;
+  gap: var(--gap);
+  align-items:start;               /* merkez yerine tepe hizası */
+  justify-items:center;
+}
   @media (max-width:1200px){
     .layout{
       grid-template-columns: 1fr;       /* darda dikey */
