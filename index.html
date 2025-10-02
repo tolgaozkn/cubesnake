@@ -189,15 +189,52 @@
   }, {passive:false});
 
   // ---- Çizim ----
-  function drawGrid(){
-    ctx.fillStyle = '#0b0c10';
-    ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.strokeStyle = '#151a22'; ctx.lineWidth = 1;
-    for(let i=0;i<=GRID;i++){
-      ctx.beginPath(); ctx.moveTo(i*CELL, 0); ctx.lineTo(i*CELL, GRID*CELL); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(0, i*CELL); ctx.lineTo(GRID*CELL, i*CELL); ctx.stroke();
-    }
+  function drawGrid() {
+  // Zemin
+  ctx.fillStyle = '#0b0c10';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Piksel hizalama için 0.5 ofset (çizgiler jilet gibi net dursun)
+  const ox = 0.5;
+
+  // Tüm kare çizgileri (MINOR): daha koyu ve kalın
+  ctx.strokeStyle = '#324055';   // belirgin koyu mavi-gri
+  ctx.lineWidth   = 1.6;
+  ctx.beginPath();
+  for (let i = 0; i <= GRID; i++) {
+    const x = i * CELL + ox;
+    const y = i * CELL + ox;
+    // Dikey
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, GRID * CELL);
+    // Yatay
+    ctx.moveTo(0, y);
+    ctx.lineTo(GRID * CELL, y);
   }
+  ctx.stroke();
+
+  // Her 2 karede bir (SEMI-MAJOR): bir tık daha kalın ve açık
+  ctx.strokeStyle = '#485a78';
+  ctx.lineWidth   = 2.0;
+  ctx.beginPath();
+  for (let i = 0; i <= GRID; i += 2) {
+    const x = i * CELL + ox;
+    const y = i * CELL + ox;
+    // Dikey
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, GRID * CELL);
+    // Yatay
+    ctx.moveTo(0, y);
+    ctx.lineTo(GRID * CELL, y);
+  }
+  ctx.stroke();
+
+    // Dış kalın çerçeve (oyun alanını çerçeveler)
+  ctx.strokeStyle = '#90a8cf';
+  ctx.lineWidth   = 3.4;
+  ctx.strokeRect(ox, ox, canvas.width - 1, canvas.height - 1);
+}
+
   function drawSnake(){
     ctx.fillStyle = 'rgba(0,0,0,.18)';
     snake.forEach(s=> ctx.fillRect(s.x*CELL+2, s.y*CELL+2, CELL-4, CELL-2));
