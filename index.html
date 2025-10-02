@@ -1,120 +1,147 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cube Snake</title>
-  <style>
-    *{box-sizing:border-box}
-    html,body{height:100%;margin:0;background:#0e0f12;color:#e7ebf3;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Cube Snake</title>
+<style>
+  :root{
+    --titleH: 72px;      /* JS ile clamp edilir */
+    --gap: 20px;
+    --pad: 16px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:#0e0f12;color:#e7ebf3;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;overflow:hidden}
 
-    /* Esnek sayfa yerleşimi: oyun ve sidebar yan yana; dar ekranda dikey */
-    .page{
-      --titlePad: 96px;                 /* JS ile güncellenecek */
-      min-height:100vh;
-      display:flex;
-      align-items:flex-start;
-      justify-content:center;
-      gap:24px;
-      padding: var(--titlePad) 16px 24px;
-      flex-wrap:wrap;                   /* dar ekranda alt satıra geç */
+  /* Üst başlık */
+  header{
+    height:var(--titleH);
+    display:flex;align-items:center;justify-content:center;
+    padding:8px 12px;
+    position:fixed; inset:0 0 auto 0; z-index:5; background:transparent;
+    pointer-events:none;
+  }
+  #titleCanvas{display:block;filter:drop-shadow(0 2px 4px rgba(0,0,0,.45))}
+
+  /* Ana düzen: başlığın altında, tüm ekranı kaplar */
+  .layout{
+    position:fixed;
+    top:calc(var(--titleH) + 8px);
+    left:0; right:0; bottom:0;
+    padding: var(--pad);
+    display:grid;
+    grid-template-columns: 1fr 340px;   /* genişte yanyana */
+    grid-auto-rows: 1fr;
+    gap: var(--gap);
+    align-items:center;
+    justify-items:center;
+  }
+  @media (max-width:1200px){
+    .layout{
+      grid-template-columns: 1fr;       /* darda dikey */
+      grid-template-rows: 1fr auto;
+      align-items:start;
+      justify-items:center;
     }
+  }
 
-    .center{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;position:relative}
-    .hud{align-self:flex-start;margin:0 0 8px 0;z-index:2;background:rgba(20,22,27,.6);padding:8px 10px;border-radius:10px;font-weight:700;backdrop-filter:blur(4px)}
-    canvas{background:#0b0c10;border:1px solid #1f2430;border-radius:0; box-shadow:0 10px 40px rgba(0,0,0,.35);transform-origin:top left}
+  /* Oyun merkezleyici */
+  .game-wrap{
+    width:100%;
+    height:100%;
+    display:flex;align-items:center;justify-content:center;
+    min-height:280px; min-width:280px;
+  }
+  .hud{
+    position:absolute; left:calc(50% - 280px); transform:translateX(-100%);
+    top:calc(var(--pad) + 6px);
+    background:rgba(20,22,27,.6); padding:8px 10px; border-radius:10px;
+    font-weight:700; backdrop-filter: blur(4px);
+  }
+  canvas#game{background:#0b0c10;border:1px solid #1f2430;border-radius:0;transform-origin:top left;box-shadow:0 10px 40px rgba(0,0,0,.35)}
 
-    .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,rgba(9,10,14,.92),rgba(9,10,14,.88));z-index:10;padding:16px}
-    .form{width:min(92vw,420px);background:#181a20;border:1px solid #232937;color:#e7ebf3;border-radius:16px;padding:20px;box-shadow:0 14px 36px rgba(0,0,0,.4)}
-    .form h1{margin:0 0 6px;font-size:20px}
-    .form label{font-size:12px;opacity:.8}
-    .row{margin-top:12px}
-    .row input[type="text"]{width:100%;padding:12px 14px;border-radius:10px;border:1px solid #2a2e36;background:#0f1116;color:#e7ebf3;outline:none}
-    .row button{width:100%;padding:12px;border:0;border-radius:12px;background:#4f7cff;color:#fff;font-weight:800;cursor:pointer;margin-top:10px}
-    .fine{font-size:12px;opacity:.7;margin-top:8px}
-    .toast{position:fixed;right:16px;top:16px;background:#1b1f27;color:#cfe0ff;padding:10px 12px;border-radius:10px;border:1px solid #273049;display:none;z-index:20}
+  /* Skor kartı */
+  .sidebar{width:340px;max-width:92vw;height:100%;display:flex;align-items:stretch}
+  .card{background:#181a20;border:1px solid #1f2430;border-radius:16px;padding:16px;box-shadow:0 8px 24px rgba(0,0,0,.25);overflow:auto}
+  .card h3{margin:0 0 8px;font-size:16px}
+  table.lb{width:100%;border-collapse:collapse;font-size:14px}
+  table.lb th,table.lb td{padding:6px 8px;border-bottom:1px solid #242833;text-align:left}
+  table.lb th:nth-child(1),table.lb td:nth-child(1){width:60px}
+  table.lb th:nth-child(3),table.lb td:nth-child(3){text-align:right;width:80px}
 
-    /* Sidebar artık akışta; dar ekranda alta iner */
-    .sidebar{position:static;width:340px;max-width:92vw}
-    .card{background:#181a20;border:1px solid #1f2430;border-radius:16px;padding:16px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
-    .card h3{margin:0 0 8px;font-size:16px}
-    table.lb{width:100%;border-collapse:collapse;font-size:14px}
-    table.lb th,table.lb td{padding:6px 8px;border-bottom:1px solid #242833;text-align:left}
-    table.lb th:nth-child(1),table.lb td:nth-child(1){width:60px}
-    table.lb th:nth-child(3),table.lb td:nth-child(3){text-align:right;width:80px}
+  /* Overlays */
+  .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,rgba(9,10,14,.92),rgba(9,10,14,.88));z-index:10;padding:16px}
+  .form{width:min(92vw,420px);background:#181a20;border:1px solid #232937;color:#e7ebf3;border-radius:16px;padding:20px;box-shadow:0 14px 36px rgba(0,0,0,.4)}
+  .form h1{margin:0 0 6px;font-size:20px}
+  .row{margin-top:12px}
+  .row input[type="text"]{width:100%;padding:12px 14px;border-radius:10px;border:1px solid #2a2e36;background:#0f1116;color:#e7ebf3;outline:none}
+  .row button{width:100%;padding:12px;border:0;border-radius:12px;background:#4f7cff;color:#fff;font-weight:800;cursor:pointer;margin-top:10px}
 
-    /* Üst başlık: küp tipografi */
-    .site-title{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:50;pointer-events:none}
-    .site-title canvas{display:block;filter:drop-shadow(0 2px 4px rgba(0,0,0,.45))}
-
-    @media (max-width:1200px){
-      .page{flex-direction:column;align-items:center;gap:16px}
-    }
-  </style>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  .toast{position:fixed;right:16px;top:calc(var(--titleH) + 12px);background:#1b1f27;color:#cfe0ff;padding:10px 12px;border-radius:10px;border:1px solid #273049;display:none;z-index:20}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <!-- Başlık -->
-  <div class="site-title">
-    <canvas id="titleCanvas" aria-hidden="true"></canvas>
+
+<header>
+  <canvas id="titleCanvas" aria-hidden="true"></canvas>
+</header>
+
+<main class="layout" aria-label="Ana düzen">
+  <div class="game-wrap" id="gameWrap">
+    <div class="hud">Skor: <span id="score">0</span></div>
+    <canvas id="game" width="560" height="560" role="img" aria-label="Yılan Oyunu"></canvas>
   </div>
 
-  <div class="page">
-    <div class="center">
-      <div class="hud">Skor: <span id="score">0</span></div>
-      <canvas id="game" width="560" height="560" aria-label="Yılan Oyunu" role="img"></canvas>
+  <aside class="sidebar">
+    <div class="card" aria-label="Global Skor Tablosu">
+      <h3>Top 10 (Global)</h3>
+      <table class="lb" aria-live="polite">
+        <thead><tr><th>#</th><th>İsim</th><th>Skor</th></tr></thead>
+        <tbody id="top10g"><tr><td colspan="3">Bağlanıyor…</td></tr></tbody>
+      </table>
+      <div id="lbStatus" class="fine"></div>
     </div>
+  </aside>
+</main>
 
-    <div class="sidebar">
-      <div class="card">
-        <h3>Top 10 (Global)</h3>
-        <table class="lb" aria-live="polite">
-          <thead><tr><th>#</th><th>İsim</th><th>Skor</th></tr></thead>
-          <tbody id="top10g"><tr><td colspan="3">Bağlanıyor…</td></tr></tbody>
-        </table>
-        <div id="lbStatus" class="fine"></div>
-      </div>
-    </div>
-
-    <!-- Başlangıç -->
-    <div class="overlay" id="startOverlay" aria-modal="true" role="dialog">
-      <div class="form">
-        <h1>Yılan</h1>
-        <div class="fine">Ok tuşları / WASD ile hareket et. Kendine ya da duvara çarparsan biter.</div>
-        <div class="row">
-          <label for="playerName">İsmin</label>
-          <input id="playerName" type="text" placeholder="ör. Boss" maxlength="20" />
-          <button id="startBtn">Başla</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Oyun Bitti -->
-    <div class="overlay" id="gameOverOverlay" style="display:none" aria-modal="true" role="dialog">
-      <div class="form">
-        <h1>Oyun Bitti</h1>
-        <div class="row">Skorun: <b id="finalScore">0</b></div>
-        <div class="row"><button id="retryBtn">Tekrar Başla</button></div>
-      </div>
+<!-- Başlangıç -->
+<div class="overlay" id="startOverlay" aria-modal="true" role="dialog">
+  <div class="form">
+    <h1>Yılan</h1>
+    <div class="fine">Ok tuşları / WASD ile hareket et. Kendine ya da duvara çarparsan biter.</div>
+    <div class="row">
+      <label for="playerName">İsmin</label>
+      <input id="playerName" type="text" placeholder="ör. Boss" maxlength="20" />
+      <button id="startBtn">Başla</button>
     </div>
   </div>
+</div>
 
-  <div class="toast" id="toast"></div>
+<!-- Oyun Bitti -->
+<div class="overlay" id="gameOverOverlay" style="display:none" aria-modal="true" role="dialog">
+  <div class="form">
+    <h1>Oyun Bitti</h1>
+    <div class="row">Skorun: <b id="finalScore">0</b></div>
+    <div class="row"><button id="retryBtn">Tekrar Başla</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
 
 <script>
 (() => {
   'use strict';
 
-  /* ========= Ayarlar ========= */
-  const GRID = 28;
-  const CELL = 20;
-  const SPEED_START = 8;
-  const SPEED_INC_EVERY = 5;
+  /* ==== Ayarlar ==== */
+  const GRID = 28, CELL = 20;
+  const SPEED_START = 8, SPEED_INC_EVERY = 5;
 
-  /* ========= DOM ========= */
+  /* ==== DOM ==== */
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
   canvas.width = GRID * CELL; canvas.height = GRID * CELL;
+
   const scoreEl = document.getElementById('score');
   const overlay = document.getElementById('startOverlay');
   const gameOverOverlay = document.getElementById('gameOverOverlay');
@@ -123,17 +150,13 @@
   const nameInput = document.getElementById('playerName');
   const startBtn = document.getElementById('startBtn');
   const toast = document.getElementById('toast');
+  const gameWrap = document.getElementById('gameWrap');
 
-  /* ========= Supabase ========= */
+  /* ==== Supabase ==== */
   const SUPABASE_URL  = window.__SUPABASE_URL  || 'https://obrtgsafmdpztkkckpcx.supabase.co';
   const SUPABASE_ANON = window.__SUPABASE_ANON || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9icnRnc2FmbWRwenRra2NrcGN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzODQzOTksImV4cCI6MjA3NDk2MDM5OX0.yGWrE7kbo1ofi0q_rAeKt4YjS0D0GLwjA8DFQ1SV5Fw';
-
   let supa = null;
-  try {
-    if (window.supabase && /^https:\/\/.*\.supabase\.co$/.test(SUPABASE_URL) && SUPABASE_ANON) {
-      supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, { auth: { persistSession: false } });
-    }
-  } catch (e) { console.warn('Supabase init hatası:', e); }
+  try { if (window.supabase) supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, { auth: { persistSession:false } }); } catch(_){}
 
   const top10gEl = document.getElementById('top10g');
   const lbStatusEl = document.getElementById('lbStatus');
@@ -144,159 +167,67 @@
     if(!supa) return;
     try{
       const { error } = await supa.from('scores').insert({ name: (name||'Anon').slice(0,20), score });
-      if(error){ console.warn('LB insert error:', error); lbStatusEl.textContent = 'Skor kaydedilemedi.'; }
-    }catch(e){ console.warn('LB insert fail:', e); lbStatusEl.textContent = 'Skor kaydedilemedi.'; }
+      if(error){ lbStatusEl.textContent='Skor kaydedilemedi.'; }
+    }catch(_){ lbStatusEl.textContent='Skor kaydedilemedi.'; }
   }
-
   async function lbLoadGlobal(){
-    if(!supa){
-      top10gEl.innerHTML = '<tr><td colspan="3">Leaderboard pasif (yapılandırılmadı).</td></tr>';
-      lbStatusEl.textContent = '';
-      return;
-    }
-    const { data, error } = await supa.from('scores').select('name, score').order('score', {ascending:false}).limit(10);
-    if(error){ top10gEl.innerHTML = `<tr><td colspan="3">Hata: ${escapeHtml(error.message||'veri alınamadı')}</td></tr>`; return; }
-    if(!data || data.length===0){ top10gEl.innerHTML = '<tr><td colspan="3">Henüz skor yok</td></tr>'; return; }
-    top10gEl.innerHTML = data.map((r,i)=> `<tr><td>${i+1}</td><td>${escapeHtml(r.name||'Anon')}</td><td>${r.score}</td></tr>`).join('');
+    if(!supa){ top10gEl.innerHTML='<tr><td colspan="3">Leaderboard pasif.</td></tr>'; return; }
+    const { data, error } = await supa.from('scores').select('name,score').order('score',{ascending:false}).limit(10);
+    if(error){ top10gEl.innerHTML = `<tr><td colspan="3">Hata: ${escapeHtml(error.message||'')}</td></tr>`; return; }
+    if(!data?.length){ top10gEl.innerHTML='<tr><td colspan="3">Henüz skor yok</td></tr>'; return; }
+    top10gEl.innerHTML = data.map((r,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(r.name||'Anon')}</td><td>${r.score}</td></tr>`).join('');
   }
-
   function escapeHtml(s){ return String(s).replace(/[&<>\"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
 
-  /* ========= Oyun Durumu ========= */
-  let PLAYER_NAME = '';
-  let snake, dir, pendingDir, food, score, speed, tickTime, eatenCount, last;
-  let running = false;
+  /* ==== Oyun Durumu ==== */
+  let PLAYER_NAME='', snake, dir, pendingDir, food, score, speed, tickTime, eatenCount, last, running=false;
+  function reset(){ snake=[{x:Math.floor(GRID/2),y:Math.floor(GRID/2)}]; dir=pendingDir={x:1,y:0}; score=0; speed=SPEED_START; eatenCount=0; last=0; tickTime=1000/speed; spawnFood(); scoreEl.textContent='0'; }
+  function spawnFood(){ while(true){ const f={x:(Math.random()*GRID)|0,y:(Math.random()*GRID)|0}; if(!snake.some(s=>s.x===f.x&&s.y===f.y)){food=f; return;} } }
 
-  function reset(){
-    snake = [{x: Math.floor(GRID/2), y: Math.floor(GRID/2)}];
-    dir = {x:1,y:0}; pendingDir = {x:1,y:0};
-    score = 0; speed = SPEED_START; eatenCount = 0; last = 0; tickTime = 1000/speed;
-    spawnFood();
-    scoreEl.textContent = '0';
-  }
-
-  function spawnFood(){
-    while(true){
-      const f = { x: (Math.random()*GRID)|0, y: (Math.random()*GRID)|0 };
-      if(!snake.some(s => s.x===f.x && s.y===f.y)){ food = f; return; }
-    }
-  }
-
-  /* ========= Giriş ========= */
+  /* ==== Giriş ==== */
   window.addEventListener('keydown', (e)=>{
-    if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) { e.preventDefault(); }
-    if(!running) return;
-    const k = e.key.toLowerCase();
-    if(e.code==='ArrowUp'   && dir.y!== 1){ pendingDir={x:0,y:-1}; }
-    if(e.code==='ArrowDown' && dir.y!==-1){ pendingDir={x:0,y: 1}; }
-    if(e.code==='ArrowLeft' && dir.x!== 1){ pendingDir={x:-1,y:0}; }
-    if(e.code==='ArrowRight'&& dir.x!==-1){ pendingDir={x: 1,y:0}; }
-    if(k==='w' && dir.y!== 1){ pendingDir={x:0,y:-1}; }
-    if(k==='s' && dir.y!==-1){ pendingDir={x:0,y: 1}; }
-    if(k==='a' && dir.x!== 1){ pendingDir={x:-1,y:0}; }
-    if(k==='d' && dir.x!==-1){ pendingDir={x: 1,y:0}; }
+    if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+    if(!running) return; const k=e.key.toLowerCase();
+    if(e.code==='ArrowUp'   && dir.y!== 1) pendingDir={x:0,y:-1};
+    if(e.code==='ArrowDown' && dir.y!==-1) pendingDir={x:0,y: 1};
+    if(e.code==='ArrowLeft' && dir.x!== 1) pendingDir={x:-1,y:0};
+    if(e.code==='ArrowRight'&& dir.x!==-1) pendingDir={x: 1,y:0};
+    if(k==='w' && dir.y!== 1) pendingDir={x:0,y:-1};
+    if(k==='s' && dir.y!==-1) pendingDir={x:0,y: 1};
+    if(k==='a' && dir.x!== 1) pendingDir={x:-1,y:0};
+    if(k==='d' && dir.x!==-1) pendingDir={x: 1,y:0};
   }, {passive:false});
 
-  /* ========= Çizim ========= */
-  function drawGrid() {
-    ctx.fillStyle = '#0b0c10';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    const ox = 0.5;
-    ctx.strokeStyle = '#6a7fa3';
-    ctx.lineWidth   = 2.6;
-    ctx.lineCap     = 'butt';
-    ctx.lineJoin    = 'miter';
-
+  /* ==== Çizim ==== */
+  function drawGrid(){
+    ctx.fillStyle='#0b0c10'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    const ox=0.5; ctx.strokeStyle='#6a7fa3'; ctx.lineWidth=2.6; ctx.lineCap='butt'; ctx.lineJoin='miter';
     ctx.beginPath();
-    for (let i = 0; i <= GRID; i++) {
-      const x = i * CELL + ox;
-      const y = i * CELL + ox;
-      ctx.moveTo(x, 0);              ctx.lineTo(x, GRID * CELL);
-      ctx.moveTo(0, y);              ctx.lineTo(GRID * CELL, y);
-    }
+    for(let i=0;i<=GRID;i++){ const x=i*CELL+ox, y=i*CELL+ox; ctx.moveTo(x,0); ctx.lineTo(x,GRID*CELL); ctx.moveTo(0,y); ctx.lineTo(GRID*CELL,y); }
     ctx.stroke();
-
-    ctx.save();
-    ctx.lineJoin = 'miter';
-    ctx.lineCap  = 'butt';
-    ctx.strokeStyle = '#90a8cf';
-    ctx.lineWidth   = 3.4;
-    ctx.strokeRect(0.5, 0.5, canvas.width - 1, canvas.height - 1);
-    ctx.restore();
+    ctx.save(); ctx.strokeStyle='#90a8cf'; ctx.lineWidth=3.4; ctx.strokeRect(0.5,0.5,canvas.width-1,canvas.height-1); ctx.restore();
   }
+  function drawSnake(){ ctx.fillStyle='rgba(0,0,0,.18)'; snake.forEach(s=>ctx.fillRect(s.x*CELL+2,s.y*CELL+2,CELL-4,CELL-2)); ctx.fillStyle='#35c97a'; snake.forEach(s=>ctx.fillRect(s.x*CELL+1,s.y*CELL+1,CELL-2,CELL-2)); const h=snake[0]; ctx.fillStyle='#62e5a1'; ctx.fillRect(h.x*CELL+1,h.y*CELL+1,CELL-2,CELL-2); }
+  function drawFood(){ ctx.fillStyle='#ff5f5f'; const r=CELL/2-3; ctx.beginPath(); ctx.arc(food.x*CELL+CELL/2, food.y*CELL+CELL/2, r, 0, Math.PI*2); ctx.fill(); }
 
-  function drawSnake(){
-    ctx.fillStyle = 'rgba(0,0,0,.18)';
-    snake.forEach(s=> ctx.fillRect(s.x*CELL+2, s.y*CELL+2, CELL-4, CELL-2));
-    ctx.fillStyle = '#35c97a';
-    snake.forEach(s=> ctx.fillRect(s.x*CELL+1, s.y*CELL+1, CELL-2, CELL-2));
-    const head = snake[0];
-    ctx.fillStyle = '#62e5a1';
-    ctx.fillRect(head.x*CELL+1, head.y*CELL+1, CELL-2, CELL-2);
-  }
-
-  function drawFood(){
-    ctx.fillStyle = '#ff5f5f';
-    const r = CELL/2 - 3;
-    ctx.beginPath();
-    ctx.arc(food.x*CELL + CELL/2, food.y*CELL + CELL/2, r, 0, Math.PI*2);
-    ctx.fill();
-  }
-
-  /* ========= Döngü ========= */
+  /* ==== Döngü ==== */
   function step(ts){
-    if(!running){ return; }
-    if(!last) last = ts;
-    const dt = ts - last;
-    if(dt >= tickTime){
-      last = ts;
-      dir = pendingDir;
-      const nx = snake[0].x + dir.x;
-      const ny = snake[0].y + dir.y;
-
-      if(nx<0 || nx>=GRID || ny<0 || ny>=GRID || snake.some(s=> s.x===nx && s.y===ny)){
-        gameOver(); return;
-      }
+    if(!running) return;
+    if(!last) last=ts; const dt=ts-last;
+    if(dt>=tickTime){
+      last=ts; dir=pendingDir;
+      const nx=snake[0].x+dir.x, ny=snake[0].y+dir.y;
+      if(nx<0||nx>=GRID||ny<0||ny>=GRID||snake.some(s=>s.x===nx&&s.y===ny)){ gameOver(); return; }
       snake.unshift({x:nx,y:ny});
-
-      if(nx===food.x && ny===food.y){
-        score += 1; eatenCount += 1; scoreEl.textContent = String(score);
-        spawnFood();
-        if(eatenCount % SPEED_INC_EVERY === 0){ speed += 1; tickTime = 1000/speed; }
-      } else {
-        snake.pop();
-      }
+      if(nx===food.x && ny===food.y){ score++; eatenCount++; scoreEl.textContent=String(score); spawnFood(); if(eatenCount%SPEED_INC_EVERY===0){ speed++; tickTime=1000/speed; } } else snake.pop();
     }
     drawGrid(); drawFood(); drawSnake();
     requestAnimationFrame(step);
   }
+  function gameOver(){ running=false; finalScoreEl.textContent=String(score); gameOverOverlay.style.display='flex'; lbSubmitGlobal(PLAYER_NAME,score).then(lbLoadGlobal); }
 
-  function gameOver(){
-    running = false;
-    finalScoreEl.textContent = String(score);
-    gameOverOverlay.style.display = 'flex';
-    lbSubmitGlobal(PLAYER_NAME, score).then(lbLoadGlobal);
-  }
-
-  /* ========= Testler ========= */
-  function runTests(){
-    try{
-      const sBackup = [{x:1,y:1}]; const fBackup = food;
-      snake = sBackup.slice(); spawnFood();
-      console.assert(!(snake[0].x===food.x && snake[0].y===food.y), 'Food snake üstüne doğdu');
-      let sp = SPEED_START; for(let i=1;i<=SPEED_INC_EVERY;i++){ if(i%SPEED_INC_EVERY===0) sp++; }
-      console.assert(sp===SPEED_START+1, 'Hız artışı beklenen değil');
-      console.assert(canvas.width===GRID*CELL && canvas.height===GRID*CELL, 'Canvas ölçüsü yanlış');
-      const fake = Array.from({length:20}, (_,i)=>({name:'N'+i, score:20-i}));
-      const html = fake.slice(0,10).map((r,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(r.name)}</td><td>${r.score}</td></tr>`).join('');
-      console.assert((html.match(/<tr>/g)||[]).length===10, 'Top10 10 satır üretmedi');
-      food = fBackup;
-    }catch(err){ console.warn('Test hatası:', err); }
-  }
-
-  /* ========= Başlık (küp tipografi) ========= */
-  const BLOCK_FONT = {
+  /* ==== Küp başlık ==== */
+  const BLOCK_FONT={
     'A':['01110','10001','10001','11111','10001','10001','10001'],
     'B':['11110','10001','11110','10001','10001','10001','11110'],
     'C':['01111','10000','10000','10000','10000','10000','01111'],
@@ -307,99 +238,54 @@
     'U':['10001','10001','10001','10001','10001','10001','01110'],
     ' ':['00000','00000','00000','00000','00000','00000','00000']
   };
-
-  function drawBlockLetter(tctx, pattern, x, y, size, gap, color, stroke){
-    for(let r=0;r<pattern.length;r++){
-      for(let c=0;c<pattern[r].length;c++){
-        if(pattern[r][c]==='1'){
-          const px = x + c*(size+gap);
-          const py = y + r*(size+gap);
-          tctx.fillStyle = color; tctx.fillRect(px,py,size,size);
-          if(stroke){
-            tctx.strokeStyle = stroke; tctx.lineWidth = Math.max(1, Math.floor(size*0.12));
-            tctx.strokeRect(px+0.5,py+0.5,size-1,size-1);
-          }
-        }
-      }
-    }
+  function drawBlockLetter(tctx,p,x,y,size,gap,fill,stroke){
+    for(let r=0;r<p.length;r++) for(let c=0;c<p[r].length;c++) if(p[r][c]==='1'){ const px=x+c*(size+gap), py=y+r*(size+gap); tctx.fillStyle=fill; tctx.fillRect(px,py,size,size); if(stroke){ tctx.strokeStyle=stroke; tctx.lineWidth=Math.max(1,Math.floor(size*0.12)); tctx.strokeRect(px+0.5,py+0.5,size-1,size-1);} }
   }
-
   function renderTitle(text='CUBE SNAKE'){
-    const t = document.getElementById('titleCanvas'); if(!t) return;
-    const tctx = t.getContext('2d');
-    const vw = Math.max(360, Math.min(window.innerWidth*0.9, 1000));
-    const size = Math.max(10, Math.min(18, Math.floor(vw/55)));
-    const gap  = Math.max(2, Math.floor(size*0.25));
-    const letterW = 5*(size+gap)-gap, letterH = 7*(size+gap)-gap, spacing = Math.max(gap*2,10);
-    const patterns = text.split('').map(ch => BLOCK_FONT[ch] || BLOCK_FONT[' ']);
-    const totalW = patterns.length*letterW + (patterns.length-1)*spacing;
-    const totalH = letterH;
-    t.width = totalW; t.height = totalH;
-    tctx.clearRect(0,0,totalW,totalH);
-    const fill='#78a6ff', stroke='#223252';
-    let x=0, y=0;
-    for(const p of patterns){ drawBlockLetter(tctx,p,x,y,size,gap,fill,stroke); x += letterW + spacing; }
+    const t=document.getElementById('titleCanvas'); if(!t) return; const c=t.getContext('2d');
+    const vw=Math.max(360,Math.min(window.innerWidth*0.9,1000));
+    const size=Math.max(8, Math.min(14, Math.floor(vw/80)));  // KÜÇÜLTÜLDÜ
+    const gap =Math.max(2, Math.floor(size*0.25));
+    const letterW=5*(size+gap)-gap, letterH=7*(size+gap)-gap, spacing=Math.max(gap*2,10);
+    const patterns=text.split('').map(ch=>BLOCK_FONT[ch]||BLOCK_FONT[' ']);
+    const W=patterns.length*letterW+(patterns.length-1)*spacing, H=letterH;
+    t.width=W; t.height=H; c.clearRect(0,0,W,H);
+    const fill='#78a6ff', stroke='#223252'; let x=0;
+    for(const p of patterns){ drawBlockLetter(c,p,x,0,size,gap,fill,stroke); x+=letterW+spacing; }
+    // Sayfa değişkenine başlık yüksekliğini yaz (clamp)
+    const clampH = Math.max(40, Math.min(H, 92));
+    document.documentElement.style.setProperty('--titleH', clampH+'px');
   }
 
-  /* ========= Yerleşim/Ölçekleme ========= */
+  /* ==== Ölçekleme ==== */
   function fitScale(){
-    const title = document.getElementById('titleCanvas');
-    const titleH = title ? title.height : 0;
-
-    const vpW = window.innerWidth  - 32;                 // yatay boşluk
-    const vpH = window.innerHeight - (titleH + 24) - 24; // üst (başlık+boşluk) + alt pad
-
-    const sidebar = document.querySelector('.sidebar');
-    const wide = window.innerWidth >= 1200;
-    const sidebarW = (wide && sidebar) ? (sidebar.clientWidth + 24) : 0;
-
-    const maxW = Math.max(320, vpW - sidebarW);
-    const maxH = Math.max(320, vpH);
-
-    const sx = maxW / canvas.width;
-    const sy = maxH / canvas.height;
-    const s  = Math.max(0.5, Math.min(sx, sy, 2));       // çok küçük/büyük olmasın
-
+    // gameWrap (grid hücresi) içinde kullanılabilir alan:
+    const rect = gameWrap.getBoundingClientRect();
+    const availW = Math.max(320, rect.width  - 8);
+    const availH = Math.max(320, rect.height - 8);
+    const sx = availW / canvas.width, sy = availH / canvas.height;
+    const s  = Math.max(0.5, Math.min(sx, sy, 2));
     canvas.style.transform = `scale(${s})`;
   }
 
-  // Başlık boyuna göre üst padding'i CSS değişkeniyle güncelle
-  function syncTitlePad(){
-    const t = document.getElementById('titleCanvas');
-    const h = t ? t.height : 0;
-    document.documentElement.style.setProperty('--titlePad', (h + 24) + 'px');
-  }
-
-  /* ========= Başlatma ========= */
+  /* ==== Başlatma ==== */
   startBtn.addEventListener('click', ()=>{
-    PLAYER_NAME = (nameInput.value||'').trim().slice(0,20) || 'Anon';
-    overlay.style.display = 'none';
-    reset();
-    runTests();
-    running = true;
-    lbLoadGlobal();
-    if(!window.__lbInterval){ window.__lbInterval = setInterval(lbLoadGlobal, 60000); }
-    requestAnimationFrame(step);
+    PLAYER_NAME=(nameInput.value||'').trim().slice(0,20)||'Anon';
+    overlay.style.display='none';
+    reset(); running=true; lbLoadGlobal(); requestAnimationFrame(step);
   });
+  retryBtn.addEventListener('click', ()=>{ gameOverOverlay.style.display='none'; reset(); running=true; requestAnimationFrame(step); });
 
-  // İlk yerleşim
-  renderTitle('CUBE SNAKE');
-  syncTitlePad();
-  fitScale();
+  // İlk çizimler
+  renderTitle('CUBE SNAKE'); fitScale();
+  window.addEventListener('resize', ()=>{ renderTitle('CUBE SNAKE'); fitScale(); });
 
-  // Yeniden boyutlandırmada her şeyi güncelle
-  window.addEventListener('resize', () => {
-    renderTitle('CUBE SNAKE');
-    syncTitlePad();
-    fitScale();
-  });
-
-  retryBtn.addEventListener('click', ()=>{
-    gameOverOverlay.style.display = 'none';
-    reset();
-    running = true;
-    requestAnimationFrame(step);
-  });
+  // ufak testler (sessiz)
+  (function tests(){ try{
+    const fake = Array.from({length:10},(_,i)=>({name:'N'+i,score:i}));
+    const html = fake.map((r,i)=>`<tr><td>${i+1}</td><td>${r.name}</td><td>${r.score}</td></tr>`).join('');
+    console.assert((html.match(/<tr>/g)||[]).length===10,'Top10 10 satır üretmedi');
+  }catch(_){}})();
 })();
 </script>
 </body>
