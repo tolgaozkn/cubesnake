@@ -1,39 +1,111 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="UTF-8"/>
+<meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Cube Snake</title>
 <style>
-  :root{ --gap:20px; --pad:16px; --cardW: clamp(240px,20vw,310px); }
+  :root{
+    --gap:20px;
+    --pad:16px;
+    --cardW: clamp(220px, 18vw, 280px); /* DAHA KÜÇÜK kart */
+  }
   *{box-sizing:border-box}
-  html,body{height:100%;margin:0;background:#0e0f12;color:#e7ebf3;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;overflow:hidden}
-  .layout{height:100vh;width:100vw;display:grid;grid-template-columns:minmax(0,1fr) var(--cardW);gap:var(--gap);align-items:center;justify-items:center;padding:var(--pad)}
-  @media (max-width:1000px){.layout{grid-template-columns:1fr;grid-template-rows:1fr auto}}
-  .game-col{height:100%;width:100%;display:flex;align-items:center;justify-content:center;min-width:320px;min-height:320px}
-  .game-wrap{position:relative;display:flex;align-items:center;justify-content:center}
-  .hud{position:absolute;left:0;top:-24px;background:rgba(20,22,27,.65);padding:6px 10px;border-radius:10px;font-weight:700;backdrop-filter:blur(4px)}
-  #game{background:#0b0c10;border:1px solid #1f2430;box-shadow:0 10px 40px rgba(0,0,0,.35);transform-origin:top left;display:block}
-  .sidebar{width:var(--cardW);max-width:92vw;height:80vh;display:flex;align-items:stretch}
-  .card{background:#181a20;border:1px solid #1f2430;border-radius:16px;padding:14px;box-shadow:0 8px 24px rgba(0,0,0,.25);overflow:auto;font-size:clamp(12px,1.5vw,14px)}
-  .card h3{margin:0 0 8px;font-size:clamp(14px,1.8vw,16px)}
-  table.lb{width:100%;border-collapse:collapse}
-  table.lb th,table.lb td{padding:6px 8px;border-bottom:1px solid #242833;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  table.lb th:nth-child(1),table.lb td:nth-child(1){width:48px}
-  table.lb th:nth-child(3),table.lb td:nth-child(3){text-align:right;width:64px}
-  .fine{font-size:.9em;opacity:.75}
-  .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,rgba(9,10,14,.92),rgba(9,10,14,.88));z-index:10;padding:16px}
-  .form{width:min(92vw,420px);background:#181a20;border:1px solid #232937;color:#e7ebf3;border-radius:16px;padding:20px;box-shadow:0 14px 36px rgba(0,0,0,.4)}
-  .form h1{margin:0 0 6px;font-size:20px}
-  .row{margin-top:12px}
-  .row input[type="text"]{width:100%;padding:12px 14px;border-radius:10px;border:1px solid #2a2e36;background:#0f1116;color:#e7ebf3;outline:none}
-  .row button{width:100%;padding:12px;border:0;border-radius:12px;background:#4f7cff;color:#fff;font-weight:800;cursor:pointer;margin-top:10px}
-  @media (max-height:900px){.layout{padding-top:28px;padding-bottom:28px}}
-  @media (max-height:780px){.layout{padding-top:36px;padding-bottom:36px}}
+  html,body{
+    height:100%; margin:0; background:#0e0f12; color:#e7ebf3;
+    font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+    overflow:hidden;
+  }
+
+  /* ===== Düzen: oyun her zaman tam ortada ===== */
+  .layout{
+    min-height:100vh; width:100vw;
+    display:flex; align-items:center; justify-content:center;
+    padding:var(--pad);
+    position:relative; /* sağdaki sabit kart için referans */
+  }
+
+  .game-col{
+    flex:0 1 auto;
+    display:flex; align-items:center; justify-content:center;
+    min-width:320px; min-height:320px;
+  }
+  .game-wrap{ position:relative; display:flex; align-items:center; justify-content:center; }
+
+  .hud{
+    position:absolute; left:0; top:-24px;
+    background:rgba(20,22,27,.65); padding:6px 10px; border-radius:10px;
+    font-weight:700; backdrop-filter: blur(4px);
+  }
+
+  #game{
+    background:#0b0c10; border:1px solid #1f2430;
+    box-shadow:0 10px 40px rgba(0,0,0,.35);
+    transform-origin: top left; display:block;
+  }
+
+  /* ===== Skor kartı: sağa sabitlenir; oyunun merkezini etkilemez ===== */
+  .sidebar{
+    position:fixed; right:16px; top:50%; transform:translateY(-50%);
+    width:var(--cardW); max-width:32vw; height:80vh;
+    display:flex; align-items:stretch; z-index:2;
+  }
+  .card{
+    background:#181a20; border:1px solid #1f2430; border-radius:16px; padding:14px;
+    box-shadow:0 8px 24px rgba(0,0,0,.25); overflow:auto;
+    font-size: clamp(12px, 1.4vw, 13px);
+  }
+  .card h3{ margin:0 0 8px; font-size: clamp(14px, 1.6vw, 16px) }
+  table.lb{ width:100%; border-collapse:collapse }
+  table.lb th,table.lb td{
+    padding:6px 8px; border-bottom:1px solid #242833; text-align:left;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  table.lb th:nth-child(1),table.lb td:nth-child(1){ width:42px }
+  table.lb th:nth-child(3),table.lb td:nth-child(3){ text-align:right; width:56px }
+  .fine{ font-size:.9em; opacity:.75 }
+
+  /* ===== Mobil/dar ekran: kart statik, alta iner ===== */
+  @media (max-width: 1000px){
+    .sidebar{
+      position:static; transform:none; width:min(92vw,520px); height:auto;
+      margin-top:var(--gap);
+    }
+    .layout{
+      flex-direction:column; align-items:center; justify-content:center;
+      padding-bottom:28px;
+    }
+  }
+
+  /* Kısa ekranlarda üst/alt nefes payı */
+  @media (max-height: 900px){ .layout{ padding-top:28px; padding-bottom:28px } }
+  @media (max-height: 780px){ .layout{ padding-top:36px; padding-bottom:36px } }
+
+  /* Overlay’ler */
+  .overlay{
+    position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(180deg,rgba(9,10,14,.92),rgba(9,10,14,.88));
+    z-index:10; padding:16px;
+  }
+  .form{
+    width:min(92vw,420px); background:#181a20; border:1px solid #232937; color:#e7ebf3;
+    border-radius:16px; padding:20px; box-shadow:0 14px 36px rgba(0,0,0,.4)
+  }
+  .form h1{ margin:0 0 6px; font-size:20px }
+  .row{ margin-top:12px }
+  .row input[type="text"]{
+    width:100%; padding:12px 14px; border-radius:10px; border:1px solid #2a2e36;
+    background:#0f1116; color:#e7ebf3; outline:none
+  }
+  .row button{
+    width:100%; padding:12px; border:0; border-radius:12px; background:#4f7cff; color:#fff;
+    font-weight:800; cursor:pointer; margin-top:10px
+  }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+
 <main class="layout">
   <section class="game-col">
     <div class="game-wrap" id="gameWrap">
@@ -41,17 +113,19 @@
       <canvas id="game" width="560" height="560" role="img" aria-label="Yılan Oyunu"></canvas>
     </div>
   </section>
-  <aside class="sidebar">
-    <div class="card">
-      <h3>Top 10 (Global)</h3>
-      <table class="lb" aria-live="polite">
-        <thead><tr><th>#</th><th>İsim</th><th>Skor</th></tr></thead>
-        <tbody id="top10g"><tr><td colspan="3">Bağlanıyor…</td></tr></tbody>
-      </table>
-      <div id="lbStatus" class="fine"></div>
-    </div>
-  </aside>
 </main>
+
+<!-- Sağdaki küçük skor kartı -->
+<aside class="sidebar">
+  <div class="card">
+    <h3>Top 10 (Global)</h3>
+    <table class="lb" aria-live="polite">
+      <thead><tr><th>#</th><th>İsim</th><th>Skor</th></tr></thead>
+      <tbody id="top10g"><tr><td colspan="3">Bağlanıyor…</td></tr></tbody>
+    </table>
+    <div id="lbStatus" class="fine"></div>
+  </div>
+</aside>
 
 <!-- Başlangıç -->
 <div class="overlay" id="startOverlay" aria-modal="true" role="dialog">
@@ -79,10 +153,10 @@
 window.addEventListener('DOMContentLoaded', () => {
   'use strict';
 
-  /* ==== Sabitler ==== */
+  /* ===== Oyun sabitleri ===== */
   const GRID=28, CELL=20, SPEED_START=8, SPEED_INC_EVERY=5;
 
-  /* ==== DOM ==== */
+  /* ===== DOM ===== */
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
   const scoreEl = document.getElementById('score');
@@ -92,18 +166,17 @@ window.addEventListener('DOMContentLoaded', () => {
   const retryBtn = document.getElementById('retryBtn');
   const nameInput = document.getElementById('playerName');
   const startBtn = document.getElementById('startBtn');
-  const gameWrap = document.getElementById('gameWrap');
-  const gameCol = document.querySelector('.game-col');
   const top10gEl = document.getElementById('top10g');
   const lbStatusEl = document.getElementById('lbStatus');
 
   canvas.width = GRID*CELL; canvas.height = GRID*CELL;
 
-  /* ==== Supabase (opsiyonel) ==== */
+  /* ===== Supabase (opsiyonel) ===== */
   const SUPABASE_URL  = window.__SUPABASE_URL  || 'https://obrtgsafmdpztkkckpcx.supabase.co';
   const SUPABASE_ANON = window.__SUPABASE_ANON || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9icnRnc2FmbWRwenRra2NrcGN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzODQzOTksImV4cCI6MjA3NDk2MDM5OX0.yGWrE7kbo1ofi0q_rAeKt4YjS0D0GLwjA8DFQ1SV5Fw';
   let supa=null;
   try{ if(window.supabase){ supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {auth:{persistSession:false}}); } }catch(_){}
+
   const escapeHtml = s => String(s).replace(/[&<>\"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));
 
   async function lbSubmitGlobal(name, score){
@@ -119,7 +192,7 @@ window.addEventListener('DOMContentLoaded', () => {
     top10gEl.innerHTML=data.map((r,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(r.name||'Anon')}</td><td>${r.score}</td></tr>`).join('');
   }
 
-  /* ==== Oyun durumu ==== */
+  /* ===== Oyun durumu ===== */
   let PLAYER_NAME='', snake, dir, pendingDir, food, score, speed, tickTime, eatenCount, last, running=false;
   function reset(){
     snake=[{x:Math.floor(GRID/2),y:Math.floor(GRID/2)}];
@@ -134,7 +207,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /* ==== Giriş ==== */
+  /* ===== Giriş ===== */
   window.addEventListener('keydown', e=>{
     if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
     if(!running) return;
@@ -149,7 +222,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if(k==='d' && dir.x!==-1) pendingDir={x: 1,y:0};
   }, {passive:false});
 
-  /* ==== Çizim ==== */
+  /* ===== Çizim ===== */
   function drawGrid(){
     ctx.fillStyle='#0b0c10'; ctx.fillRect(0,0,canvas.width,canvas.height);
     const ox=0.5; ctx.strokeStyle='#6a7fa3'; ctx.lineWidth=2.6; ctx.lineCap='butt'; ctx.lineJoin='miter';
@@ -175,7 +248,7 @@ window.addEventListener('DOMContentLoaded', () => {
     ctx.arc(food.x*CELL+CELL/2, food.y*CELL+CELL/2, r, 0, Math.PI*2); ctx.fill();
   }
 
-  /* ==== Döngü ==== */
+  /* ===== Döngü ===== */
   function step(ts){
     if(!running) return;
     if(!last) last=ts;
@@ -200,42 +273,48 @@ window.addEventListener('DOMContentLoaded', () => {
     lbSubmitGlobal(PLAYER_NAME,score).then(lbLoadGlobal);
   }
 
-  /* ==== Responsive ölçek ==== */
-  function fitScale(){
-    const colRect = gameCol.getBoundingClientRect();
-    const marginW=24, marginH=140;
-    const availW=Math.max(320,colRect.width -marginW);
-    const availH=Math.max(320,colRect.height-marginH);
-    const sx=availW/canvas.width, sy=availH/canvas.height;
-    const vh=window.innerHeight;
-    let cap=1.0; if(vh<900) cap=.85; if(vh<820) cap=.75; if(vh<740) cap=.68; if(vh<680) cap=.60;
-    const s=Math.max(.5,Math.min(sx,sy,cap));
-    canvas.style.transform=`scale(${s})`;
+  /* ===== Responsive ölçek: oyun ortada, kart sağda ===== */
+  function getSidebarWidth(){
+    // Geniş ekranda sabit kartın kapladığı alanı hesaba kat (altındaki boşluk + 16px güvenlik)
+    const mq = window.matchMedia('(max-width: 1000px)');
+    if(mq.matches) return 0; // dar ekranda kart altta -> genişlikten düşme
+    const el = document.querySelector('.sidebar');
+    return el ? (el.getBoundingClientRect().width + 32) : 0;
   }
 
-  /* ==== Başlat/tekrar ==== */
-  
+  function fitScale(){
+    const availW = Math.max(320, window.innerWidth  - getSidebarWidth() - 32); // sol/sağ nefes
+    const availH = Math.max(320, window.innerHeight - 140);                    // üst/alt nefes
+    const sx = availW / canvas.width;
+    const sy = availH / canvas.height;
+
+    // laptop gibi kısa ekranlarda tavan
+    const vh = window.innerHeight;
+    let cap = 1.0; if(vh<900) cap=.85; if(vh<820) cap=.75; if(vh<740) cap=.68; if(vh<680) cap=.60;
+
+    const s = Math.max(0.5, Math.min(sx, sy, cap));
+    canvas.style.transform = `scale(${s})`;
+  }
+
+  /* ===== Başlat/tekrar ===== */
   function startGame(){
     try{
       PLAYER_NAME = (nameInput?.value||'').trim().slice(0,20) || 'Anon';
       overlay.style.display='none';
       reset(); running=true;
-      lbLoadGlobal();  // pasifse uyarı basar
+      lbLoadGlobal();
       requestAnimationFrame(step);
       fitScale();
     }catch(err){
       console.error('Start hatası:', err);
-      // Hata olsa bile oyunu çalıştırmayı dene:
-      overlay.style.display='none';
-      reset(); running=true; requestAnimationFrame(step);
+      overlay.style.display='none'; reset(); running=true; requestAnimationFrame(step);
     }
   }
-  startBtn?.addEventListener('click', startGame);
-  // Enter ile başlat
-  nameInput?.addEventListener('keydown', e=>{ if(e.key==='Enter') startGame(); });
-  retryBtn?.addEventListener('click', ()=>{ gameOverOverlay.style.display='none'; reset(); running=true; requestAnimationFrame(step); });
+  document.getElementById('retryBtn').addEventListener('click', ()=>{ gameOverOverlay.style.display='none'; reset(); running=true; requestAnimationFrame(step); });
+  document.getElementById('startBtn').addEventListener('click', startGame);
+  nameInput.addEventListener('keydown', e=>{ if(e.key==='Enter') startGame(); });
 
-  // İlk çizim ve dinleyiciler
+  // İlk çizim + dinleyiciler
   drawGrid(); fitScale(); window.addEventListener('resize', fitScale);
 });
 </script>
