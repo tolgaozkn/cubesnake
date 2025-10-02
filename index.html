@@ -7,10 +7,23 @@
   <style>
     *{box-sizing:border-box}
     html,body{height:100%;margin:0;background:#0e0f12;color:#e7ebf3;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
-    .page{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:110px 0}
+
+    /* Esnek sayfa yerleşimi: oyun ve sidebar yan yana; dar ekranda dikey */
+    .page{
+      --titlePad: 96px;                 /* JS ile güncellenecek */
+      min-height:100vh;
+      display:flex;
+      align-items:flex-start;
+      justify-content:center;
+      gap:24px;
+      padding: var(--titlePad) 16px 24px;
+      flex-wrap:wrap;                   /* dar ekranda alt satıra geç */
+    }
+
     .center{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;position:relative}
     .hud{align-self:flex-start;margin:0 0 8px 0;z-index:2;background:rgba(20,22,27,.6);padding:8px 10px;border-radius:10px;font-weight:700;backdrop-filter:blur(4px)}
-    canvas{background:#0b0c10;border:1px solid #1f2430;border-radius:0; /* köşeler kare */ box-shadow:0 10px 40px rgba(0,0,0,.35);transform-origin:top left}
+    canvas{background:#0b0c10;border:1px solid #1f2430;border-radius:0; box-shadow:0 10px 40px rgba(0,0,0,.35);transform-origin:top left}
+
     .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,rgba(9,10,14,.92),rgba(9,10,14,.88));z-index:10;padding:16px}
     .form{width:min(92vw,420px);background:#181a20;border:1px solid #232937;color:#e7ebf3;border-radius:16px;padding:20px;box-shadow:0 14px 36px rgba(0,0,0,.4)}
     .form h1{margin:0 0 6px;font-size:20px}
@@ -20,7 +33,9 @@
     .row button{width:100%;padding:12px;border:0;border-radius:12px;background:#4f7cff;color:#fff;font-weight:800;cursor:pointer;margin-top:10px}
     .fine{font-size:12px;opacity:.7;margin-top:8px}
     .toast{position:fixed;right:16px;top:16px;background:#1b1f27;color:#cfe0ff;padding:10px 12px;border-radius:10px;border:1px solid #273049;display:none;z-index:20}
-    .sidebar{position:fixed;right:24px;top:120px;width:340px;max-width:90vw}
+
+    /* Sidebar artık akışta; dar ekranda alta iner */
+    .sidebar{position:static;width:340px;max-width:92vw}
     .card{background:#181a20;border:1px solid #1f2430;border-radius:16px;padding:16px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
     .card h3{margin:0 0 8px;font-size:16px}
     table.lb{width:100%;border-collapse:collapse;font-size:14px}
@@ -28,14 +43,18 @@
     table.lb th:nth-child(1),table.lb td:nth-child(1){width:60px}
     table.lb th:nth-child(3),table.lb td:nth-child(3){text-align:right;width:80px}
 
-    /* Başlık (Cube Snake) */
+    /* Üst başlık: küp tipografi */
     .site-title{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:50;pointer-events:none}
     .site-title canvas{display:block;filter:drop-shadow(0 2px 4px rgba(0,0,0,.45))}
+
+    @media (max-width:1200px){
+      .page{flex-direction:column;align-items:center;gap:16px}
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <!-- Üst başlık: küp tipografi ile CUBE SNAKE -->
+  <!-- Başlık -->
   <div class="site-title">
     <canvas id="titleCanvas" aria-hidden="true"></canvas>
   </div>
@@ -86,13 +105,13 @@
 (() => {
   'use strict';
 
-  /* ================== Ayarlar ================== */
-  const GRID = 28;            // GRID x GRID
-  const CELL = 20;            // px
-  const SPEED_START = 8;      // hamle/sn
-  const SPEED_INC_EVERY = 5;  // her 5 elmada hız +1
+  /* ========= Ayarlar ========= */
+  const GRID = 28;
+  const CELL = 20;
+  const SPEED_START = 8;
+  const SPEED_INC_EVERY = 5;
 
-  /* ================== DOM ================== */
+  /* ========= DOM ========= */
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
   canvas.width = GRID * CELL; canvas.height = GRID * CELL;
@@ -105,8 +124,7 @@
   const startBtn = document.getElementById('startBtn');
   const toast = document.getElementById('toast');
 
-  /* ================== Supabase ================== */
-  // (Senin verdiğin değerlerle)
+  /* ========= Supabase ========= */
   const SUPABASE_URL  = window.__SUPABASE_URL  || 'https://obrtgsafmdpztkkckpcx.supabase.co';
   const SUPABASE_ANON = window.__SUPABASE_ANON || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9icnRnc2FmbWRwenRra2NrcGN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzODQzOTksImV4cCI6MjA3NDk2MDM5OX0.yGWrE7kbo1ofi0q_rAeKt4YjS0D0GLwjA8DFQ1SV5Fw';
 
@@ -144,7 +162,7 @@
 
   function escapeHtml(s){ return String(s).replace(/[&<>\"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
 
-  /* ================== Oyun Durumu ================== */
+  /* ========= Oyun Durumu ========= */
   let PLAYER_NAME = '';
   let snake, dir, pendingDir, food, score, speed, tickTime, eatenCount, last;
   let running = false;
@@ -164,38 +182,29 @@
     }
   }
 
-  /* ================== Giriş ================== */
+  /* ========= Giriş ========= */
   window.addEventListener('keydown', (e)=>{
-    // Scroll'u engelle (ok tuşları ve space)
     if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) { e.preventDefault(); }
     if(!running) return;
     const k = e.key.toLowerCase();
-    // Ok tuşları
     if(e.code==='ArrowUp'   && dir.y!== 1){ pendingDir={x:0,y:-1}; }
     if(e.code==='ArrowDown' && dir.y!==-1){ pendingDir={x:0,y: 1}; }
     if(e.code==='ArrowLeft' && dir.x!== 1){ pendingDir={x:-1,y:0}; }
     if(e.code==='ArrowRight'&& dir.x!==-1){ pendingDir={x: 1,y:0}; }
-    // WASD
     if(k==='w' && dir.y!== 1){ pendingDir={x:0,y:-1}; }
     if(k==='s' && dir.y!==-1){ pendingDir={x:0,y: 1}; }
     if(k==='a' && dir.x!== 1){ pendingDir={x:-1,y:0}; }
     if(k==='d' && dir.x!==-1){ pendingDir={x: 1,y:0}; }
   }, {passive:false});
 
-  /* ================== Çizim ================== */
-
-  // Tüm çizgileri aynı kalınlıkta ve belirgin çizen grid
+  /* ========= Çizim ========= */
   function drawGrid() {
-    // Zemin
     ctx.fillStyle = '#0b0c10';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Jilet gibi çizgi için piksel hizalama
     const ox = 0.5;
-
-    // TÜM çizgiler: aynı kalınlık ve belirgin renk
-    ctx.strokeStyle = '#6a7fa3';  // açık mavi-gri
-    ctx.lineWidth   = 2.6;        // tüm çizgilerde bu kalınlık
+    ctx.strokeStyle = '#6a7fa3';
+    ctx.lineWidth   = 2.6;
     ctx.lineCap     = 'butt';
     ctx.lineJoin    = 'miter';
 
@@ -203,16 +212,11 @@
     for (let i = 0; i <= GRID; i++) {
       const x = i * CELL + ox;
       const y = i * CELL + ox;
-      // Dikey
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, GRID * CELL);
-      // Yatay
-      ctx.moveTo(0, y);
-      ctx.lineTo(GRID * CELL, y);
+      ctx.moveTo(x, 0);              ctx.lineTo(x, GRID * CELL);
+      ctx.moveTo(0, y);              ctx.lineTo(GRID * CELL, y);
     }
     ctx.stroke();
 
-    // Dış kalın çerçeve (köşeler keskin)
     ctx.save();
     ctx.lineJoin = 'miter';
     ctx.lineCap  = 'butt';
@@ -223,7 +227,6 @@
   }
 
   function drawSnake(){
-    // Gölge + gövde + kafa vurgusu
     ctx.fillStyle = 'rgba(0,0,0,.18)';
     snake.forEach(s=> ctx.fillRect(s.x*CELL+2, s.y*CELL+2, CELL-4, CELL-2));
     ctx.fillStyle = '#35c97a';
@@ -241,7 +244,7 @@
     ctx.fill();
   }
 
-  /* ================== Döngü ================== */
+  /* ========= Döngü ========= */
   function step(ts){
     if(!running){ return; }
     if(!last) last = ts;
@@ -252,29 +255,20 @@
       const nx = snake[0].x + dir.x;
       const ny = snake[0].y + dir.y;
 
-      // çarpışma
       if(nx<0 || nx>=GRID || ny<0 || ny>=GRID || snake.some(s=> s.x===nx && s.y===ny)){
-        gameOver();
-        return;
+        gameOver(); return;
       }
       snake.unshift({x:nx,y:ny});
 
-      // yeme
       if(nx===food.x && ny===food.y){
         score += 1; eatenCount += 1; scoreEl.textContent = String(score);
         spawnFood();
-        if(eatenCount % SPEED_INC_EVERY === 0){
-          speed += 1; tickTime = 1000/speed;
-        }
+        if(eatenCount % SPEED_INC_EVERY === 0){ speed += 1; tickTime = 1000/speed; }
       } else {
         snake.pop();
       }
     }
-
-    drawGrid();
-    drawFood();
-    drawSnake();
-
+    drawGrid(); drawFood(); drawSnake();
     requestAnimationFrame(step);
   }
 
@@ -285,34 +279,23 @@
     lbSubmitGlobal(PLAYER_NAME, score).then(lbLoadGlobal);
   }
 
-  /* ================== Testler ================== */
+  /* ========= Testler ========= */
   function runTests(){
     try{
-      // 1) food yılan üstüne doğmamalı
-      const sBackup = [{x:1,y:1}];
-      const fBackup = food;
-      snake = sBackup.slice();
-      spawnFood();
+      const sBackup = [{x:1,y:1}]; const fBackup = food;
+      snake = sBackup.slice(); spawnFood();
       console.assert(!(snake[0].x===food.x && snake[0].y===food.y), 'Food snake üstüne doğdu');
-
-      // 2) hız artışı kontrol
       let sp = SPEED_START; for(let i=1;i<=SPEED_INC_EVERY;i++){ if(i%SPEED_INC_EVERY===0) sp++; }
       console.assert(sp===SPEED_START+1, 'Hız artışı beklenen değil');
-
-      // 3) canvas boyutu
       console.assert(canvas.width===GRID*CELL && canvas.height===GRID*CELL, 'Canvas ölçüsü yanlış');
-
-      // 4) Top10 10 satır format
       const fake = Array.from({length:20}, (_,i)=>({name:'N'+i, score:20-i}));
       const html = fake.slice(0,10).map((r,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(r.name)}</td><td>${r.score}</td></tr>`).join('');
       console.assert((html.match(/<tr>/g)||[]).length===10, 'Top10 10 satır üretmedi');
-
-      console.log('Testler tamam.');
       food = fBackup;
     }catch(err){ console.warn('Test hatası:', err); }
   }
 
-  /* ================== Başlık (küp tipografi) ================== */
+  /* ========= Başlık (küp tipografi) ========= */
   const BLOCK_FONT = {
     'A':['01110','10001','10001','11111','10001','10001','10001'],
     'B':['11110','10001','11110','10001','10001','10001','11110'],
@@ -358,7 +341,36 @@
     for(const p of patterns){ drawBlockLetter(tctx,p,x,y,size,gap,fill,stroke); x += letterW + spacing; }
   }
 
-  /* ================== Başlatma ================== */
+  /* ========= Yerleşim/Ölçekleme ========= */
+  function fitScale(){
+    const title = document.getElementById('titleCanvas');
+    const titleH = title ? title.height : 0;
+
+    const vpW = window.innerWidth  - 32;                 // yatay boşluk
+    const vpH = window.innerHeight - (titleH + 24) - 24; // üst (başlık+boşluk) + alt pad
+
+    const sidebar = document.querySelector('.sidebar');
+    const wide = window.innerWidth >= 1200;
+    const sidebarW = (wide && sidebar) ? (sidebar.clientWidth + 24) : 0;
+
+    const maxW = Math.max(320, vpW - sidebarW);
+    const maxH = Math.max(320, vpH);
+
+    const sx = maxW / canvas.width;
+    const sy = maxH / canvas.height;
+    const s  = Math.max(0.5, Math.min(sx, sy, 2));       // çok küçük/büyük olmasın
+
+    canvas.style.transform = `scale(${s})`;
+  }
+
+  // Başlık boyuna göre üst padding'i CSS değişkeniyle güncelle
+  function syncTitlePad(){
+    const t = document.getElementById('titleCanvas');
+    const h = t ? t.height : 0;
+    document.documentElement.style.setProperty('--titlePad', (h + 24) + 'px');
+  }
+
+  /* ========= Başlatma ========= */
   startBtn.addEventListener('click', ()=>{
     PLAYER_NAME = (nameInput.value||'').trim().slice(0,20) || 'Anon';
     overlay.style.display = 'none';
@@ -370,18 +382,17 @@
     requestAnimationFrame(step);
   });
 
-  function fitScale(){
-    const sidebar = document.querySelector('.sidebar');
-    const sidebarW = sidebar ? sidebar.clientWidth + 40 : 0;
-    const maxW = Math.max(320, window.innerWidth - sidebarW - 48);
-    const maxH = Math.max(320, window.innerHeight - 16 - 16 - 48);
-    const sx = maxW / canvas.width, sy = maxH / canvas.height;
-    const s = Math.min(sx, sy, 1.6);
-    canvas.style.transform = `scale(${s})`;
-  }
-  fitScale();
+  // İlk yerleşim
   renderTitle('CUBE SNAKE');
-  window.addEventListener('resize', () => { fitScale(); renderTitle('CUBE SNAKE'); });
+  syncTitlePad();
+  fitScale();
+
+  // Yeniden boyutlandırmada her şeyi güncelle
+  window.addEventListener('resize', () => {
+    renderTitle('CUBE SNAKE');
+    syncTitlePad();
+    fitScale();
+  });
 
   retryBtn.addEventListener('click', ()=>{
     gameOverOverlay.style.display = 'none';
