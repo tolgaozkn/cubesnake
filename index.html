@@ -105,11 +105,18 @@
   const toast = document.getElementById('toast');
 
   // ---- Supabase (Global Leaderboard) ----
-  const SUPABASE_URL = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9icnRnc2FmbWRwenRra2NrcGN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzODQzOTksImV4cCI6MjA3NDk2MDM5OX0.yGWrE7kbo1ofi0q_rAeKt4YjS0D0GLwjA8DFQ1SV5Fw'; // TODO: kendi URL
-  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9icnRnc2FmbWRwenRra2NrcGN4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTM4NDM5OSwiZXhwIjoyMDc0OTYwMzk5fQ.gpAj0VG6zaH02uxMRQZQWnDSIw4sEtDMPob7utpNE18'; // TODO: kendi anon key
-  const supa = (window.supabase && SUPABASE_URL.startsWith('https://') && SUPABASE_ANON.length>10)
-    ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON, { auth: { persistSession: false }})
-    : null;
+  // Bu iki değeri doldur (veya window.__SUPABASE_URL / window.__SUPABASE_ANON olarak sayfada set et)
+  const SUPABASE_URL  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9icnRnc2FmbWRwenRra2NrcGN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzODQzOTksImV4cCI6MjA3NDk2MDM5OX0.yGWrE7kbo1ofi0q_rAeKt4YjS0D0GLwjA8DFQ1SV5Fw';
+  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9icnRnc2FmbWRwenRra2NrcGN4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTM4NDM5OSwiZXhwIjoyMDc0OTYwMzk5fQ.gpAj0VG6zaH02uxMRQZQWnDSIw4sEtDMPob7utpNE18';
+
+  let supa = null;
+  try {
+    if (window.supabase && /^https:\/\/.*\.supabase\.co$/.test(SUPABASE_URL) && SUPABASE_ANON && SUPABASE_ANON !== 'YOUR-ANON-KEY') {
+      supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, { auth: { persistSession: false } });
+    }
+  } catch (e) {
+    console.warn('Supabase init hatası:', e);
+  }
   const top10gEl = document.getElementById('top10g');
   const lbStatusEl = document.getElementById('lbStatus');
 
@@ -118,11 +125,24 @@
   async function lbSubmitGlobal(name, score){
     if(!supa) return;
     try{
-      await supa.from('scores').insert({ name: name?.slice(0,20)||'Anon', score });
+      const { error } = await supa.from('scores').insert({ name: (name||'Anon').slice(0,20), score });
+      if(error){ console.warn('LB insert error:', error); lbStatusEl.textContent = 'Skor kaydedilemedi.'; }
+    }catch(e){ console.warn('LB insert fail:', e); lbStatusEl.textContent = 'Skor kaydedilemedi.'; }
+  });
     }catch(e){ lbStatusEl.textContent = 'Skor kaydedilemedi.'; }
   }
   async function lbLoadGlobal(){
-    if(!supa){ top10gEl.innerHTML = '<tr><td colspan="3">Leaderboard yapılandırılmadı.</td></tr>'; return; }
+    if(!supa){
+      const reason = (!window.supabase) ? 'Supabase JS yüklenemedi' : (SUPABASE_URL.includes('YOUR-PROJECT-ref') || SUPABASE_ANON === 'YOUR-ANON-KEY') ? 'Anahtar/URL girilmedi' : 'Bilinmeyen';
+      top10gEl.innerHTML = `<tr><td colspan="3">Leaderboard pasif (${reason}).</td></tr>`;
+      lbStatusEl.textContent = '';
+      return;
+    }
+    const { data, error } = await supa.from('scores').select('name, score').order('score', {ascending:false}).limit(10);
+    if(error){ top10gEl.innerHTML = `<tr><td colspan=\"3\">Hata: ${escapeHtml(error.message||'veri alınamadı')}</td></tr>`; return; }
+    if(!data || data.length===0){ top10gEl.innerHTML = '<tr><td colspan="3">Henüz skor yok</td></tr>'; return; }
+    top10gEl.innerHTML = data.map((r,i)=> `<tr><td>${i+1}</td><td>${escapeHtml(r.name||'Anon')}</td><td>${r.score}</td></tr>`).join('');
+  }
     const { data, error } = await supa.from('scores').select('name, score').order('score', {ascending:false}).limit(10);
     if(error){ top10gEl.innerHTML = '<tr><td colspan="3">Hata: veri alınamadı</td></tr>'; return; }
     if(!data || data.length===0){ top10gEl.innerHTML = '<tr><td colspan="3">Henüz skor yok</td></tr>'; return; }
@@ -269,6 +289,7 @@
     runTests();
     running = true;
     lbLoadGlobal();
+    if(!window.__lbInterval){ window.__lbInterval = setInterval(lbLoadGlobal, 60000); }
     requestAnimationFrame(step);
   });
 
