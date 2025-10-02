@@ -7,12 +7,13 @@
 <style>
   :root{ --gap:20px; --pad:16px; }
   *{box-sizing:border-box}
-  html,body{ height:100%; margin:0; background:#0e0f12; color:#e7ebf3;
+  html,body{
+    height:100%; margin:0; background:#0e0f12; color:#e7ebf3;
     font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
-    overflow:hidden; /* sayfa scrol etmiyor; biz sığdırıyoruz */
+    overflow:hidden; /* sayfa scroll etmiyoruz; sığdırıyoruz */
   }
 
-  /* Tam ekran grid: solda oyun, sağda skor kartı. İki taraf da DİKEY+YATAY ortalı. */
+  /* Tam ekran grid: solda oyun, sağda skor kartı; iki taraf da merkezde */
   .layout{
     height:100vh; width:100vw;
     display:grid;
@@ -26,21 +27,18 @@
     .layout{ grid-template-columns:1fr; grid-template-rows: 1fr auto; }
   }
 
-  /* Oyun sütunu: sadece ortalama */
   .game-col{
     height:100%; width:100%;
     display:flex; align-items:center; justify-content:center;
     min-width:320px; min-height:320px;
   }
 
-  /* Oyun alanı sarmalayıcı: merkez ve referans */
   .game-wrap{
     position:relative;
     display:flex; align-items:center; justify-content:center;
-    /* Bu kutunun boyutu önemli değil; ölçek JS ile ayarlanacak */
   }
 
-  /* Skor etiketi: canvas’ın tam sol üstü */
+  /* Skor etiketi: canvas’ın hemen sol üstünde */
   .hud{
     position:absolute; left:0; top:-24px;
     background:rgba(20,22,27,.65); padding:6px 10px; border-radius:10px;
@@ -49,10 +47,9 @@
 
   /* Canvas */
   #game{
-    background:#0b0c10; border:1px solid #1f2430; border-radius:0;
+    background:#0b0c10; border:1px solid #1f2430;
     box-shadow:0 10px 40px rgba(0,0,0,.35);
-    transform-origin:top left;
-    display:block;
+    transform-origin:top left; display:block;
   }
 
   /* Skor kartı */
@@ -66,7 +63,11 @@
   .fine{font-size:12px; opacity:.75}
 
   /* Overlays */
-  .overlay{position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg,rgba(9,10,14,.92),rgba(9,10,14,.88)); z-index:10; padding:16px}
+  .overlay{
+    position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(180deg,rgba(9,10,14,.92),rgba(9,10,14,.88));
+    z-index:10; padding:16px;
+  }
   .form{width:min(92vw,420px); background:#181a20; border:1px solid #232937; color:#e7ebf3; border-radius:16px; padding:20px; box-shadow:0 14px 36px rgba(0,0,0,.4)}
   .form h1{margin:0 0 6px; font-size:20px}
   .row{margin-top:12px}
@@ -83,7 +84,7 @@
   <section class="game-col">
     <div class="game-wrap" id="gameWrap">
       <div class="hud">Skor: <span id="score">0</span></div>
-      <!-- Orijinal boyut (GRID*CELL) → 560×560. JS, ölçeklemeyi aşağı çeker. -->
+      <!-- Orijinal piksel boyutu; JS ile küçültüp/ortalarız -->
       <canvas id="game" width="560" height="560" role="img" aria-label="Yılan Oyunu"></canvas>
     </div>
   </section>
@@ -108,7 +109,7 @@
     <div class="row">
       <label for="playerName">İsmin</label>
       <input id="playerName" type="text" placeholder="ör. Boss" maxlength="20" />
-      <button id="startBtn">Başla</button>
+      <button id="startBtn" type="button">Başla</button>
     </div>
   </div>
 </div>
@@ -118,7 +119,7 @@
   <div class="form">
     <h1>Oyun Bitti</h1>
     <div class="row">Skorun: <b id="finalScore">0</b></div>
-    <div class="row"><button id="retryBtn">Tekrar Başla</button></div>
+    <div class="row"><button id="retryBtn" type="button">Tekrar Başla</button></div>
   </div>
 </div>
 
@@ -143,7 +144,6 @@
   const nameInput = document.getElementById('playerName');
   const startBtn = document.getElementById('startBtn');
   const gameWrap = document.getElementById('gameWrap');
-
   canvas.width = GRID * CELL; canvas.height = GRID * CELL;
 
   /* ==== Supabase ==== */
@@ -158,7 +158,7 @@
   function escapeHtml(s){ return String(s).replace(/[&<>\"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
 
   async function lbSubmitGlobal(name, score){
-    if(!supa) return;
+    if(!supa || score < 2) return; // çok düşük skorları yazmayalım
     try{
       const { error } = await supa.from('scores').insert({ name: (name||'Anon').slice(0,20), score });
       if(error){ lbStatusEl.textContent='Skor kaydedilemedi.'; }
@@ -174,13 +174,25 @@
 
   /* ==== Oyun Durumu ==== */
   let PLAYER_NAME='', snake, dir, pendingDir, food, score, speed, tickTime, eatenCount, last, running=false;
-  function reset(){ snake=[{x:Math.floor(GRID/2),y:Math.floor(GRID/2)}]; dir=pendingDir={x:1,y:0}; score=0; speed=SPEED_START; eatenCount=0; last=0; tickTime=1000/speed; spawnFood(); scoreEl.textContent='0'; }
-  function spawnFood(){ while(true){ const f={x:(Math.random()*GRID)|0,y:(Math.random()*GRID)|0}; if(!snake.some(s=>s.x===f.x&&s.y===f.y)){food=f; return;} } }
+  function reset(){
+    snake=[{x:Math.floor(GRID/2),y:Math.floor(GRID/2)}];
+    dir=pendingDir={x:1,y:0};
+    score=0; speed=SPEED_START; eatenCount=0; last=0; tickTime=1000/speed;
+    spawnFood(); scoreEl.textContent='0';
+    drawGrid(); // ilk kare
+  }
+  function spawnFood(){
+    while(true){
+      const f={x:(Math.random()*GRID)|0,y:(Math.random()*GRID)|0};
+      if(!snake.some(s=>s.x===f.x&&s.y===f.y)){ food=f; return; }
+    }
+  }
 
   /* ==== Giriş ==== */
   window.addEventListener('keydown', (e)=>{
     if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
-    if(!running) return; const k=e.key.toLowerCase();
+    if(!running) return;
+    const k=e.key.toLowerCase();
     if(e.code==='ArrowUp'   && dir.y!== 1) pendingDir={x:0,y:-1};
     if(e.code==='ArrowDown' && dir.y!==-1) pendingDir={x:0,y: 1};
     if(e.code==='ArrowLeft' && dir.x!== 1) pendingDir={x:-1,y:0};
@@ -196,57 +208,87 @@
     ctx.fillStyle='#0b0c10'; ctx.fillRect(0,0,canvas.width,canvas.height);
     const ox=0.5; ctx.strokeStyle='#6a7fa3'; ctx.lineWidth=2.6; ctx.lineCap='butt'; ctx.lineJoin='miter';
     ctx.beginPath();
-    for(let i=0;i<=GRID;i++){ const x=i*CELL+ox, y=i*CELL+ox; ctx.moveTo(x,0); ctx.lineTo(x,GRID*CELL); ctx.moveTo(0,y); ctx.lineTo(GRID*CELL,y); }
+    for(let i=0;i<=GRID;i++){
+      const x=i*CELL+ox, y=i*CELL+ox;
+      ctx.moveTo(x,0); ctx.lineTo(x,GRID*CELL);
+      ctx.moveTo(0,y); ctx.lineTo(GRID*CELL,y);
+    }
     ctx.stroke();
     ctx.save(); ctx.strokeStyle='#90a8cf'; ctx.lineWidth=3.4; ctx.strokeRect(0.5,0.5,canvas.width-1,canvas.height-1); ctx.restore();
   }
-  function drawSnake(){ ctx.fillStyle='rgba(0,0,0,.18)'; snake.forEach(s=>ctx.fillRect(s.x*CELL+2,s.y*CELL+2,CELL-4,CELL-2)); ctx.fillStyle='#35c97a'; snake.forEach(s=>ctx.fillRect(s.x*CELL+1,s.y*CELL+1,CELL-2,CELL-2)); const h=snake[0]; ctx.fillStyle='#62e5a1'; ctx.fillRect(h.x*CELL+1,h.y*CELL+1,CELL-2,CELL-2); }
-  function drawFood(){ ctx.fillStyle='#ff5f5f'; const r=CELL/2-3; ctx.beginPath(); ctx.arc(food.x*CELL+CELL/2, food.y*CELL+CELL/2, r, 0, Math.PI*2); ctx.fill(); }
+  function drawSnake(){
+    ctx.fillStyle='rgba(0,0,0,.18)';
+    snake.forEach(s=>ctx.fillRect(s.x*CELL+2,s.y*CELL+2,CELL-4,CELL-2));
+    ctx.fillStyle='#35c97a';
+    snake.forEach(s=>ctx.fillRect(s.x*CELL+1,s.y*CELL+1,CELL-2,CELL-2));
+    const h=snake[0];
+    ctx.fillStyle='#62e5a1'; ctx.fillRect(h.x*CELL+1,h.y*CELL+1,CELL-2,CELL-2);
+  }
+  function drawFood(){
+    ctx.fillStyle='#ff5f5f';
+    const r=CELL/2-3; ctx.beginPath();
+    ctx.arc(food.x*CELL+CELL/2, food.y*CELL+CELL/2, r, 0, Math.PI*2);
+    ctx.fill();
+  }
 
   /* ==== Döngü ==== */
   function step(ts){
     if(!running) return;
-    if(!last) last=ts; const dt=ts-last;
+    if(!last) last=ts;
+    const dt=ts-last;
     if(dt>=tickTime){
-      last=ts; dir=pendingDir;
+      last=ts;
+      dir=pendingDir;
       const nx=snake[0].x+dir.x, ny=snake[0].y+dir.y;
       if(nx<0||nx>=GRID||ny<0||ny>=GRID||snake.some(s=>s.x===nx&&s.y===ny)){ gameOver(); return; }
       snake.unshift({x:nx,y:ny});
-      if(nx===food.x && ny===food.y){ score++; eatenCount++; scoreEl.textContent=String(score); spawnFood(); if(eatenCount%SPEED_INC_EVERY===0){ speed++; tickTime=1000/speed; } } else snake.pop();
+      if(nx===food.x && ny===food.y){
+        score++; eatenCount++; scoreEl.textContent=String(score); spawnFood();
+        if(eatenCount%SPEED_INC_EVERY===0){ speed++; tickTime=1000/speed; }
+      }else{
+        snake.pop();
+      }
     }
     drawGrid(); drawFood(); drawSnake();
     requestAnimationFrame(step);
   }
-  function gameOver(){ running=false; finalScoreEl.textContent=String(score); gameOverOverlay.style.display='flex'; lbSubmitGlobal(PLAYER_NAME,score).then(lbLoadGlobal); }
+  function gameOver(){
+    running=false;
+    finalScoreEl.textContent=String(score);
+    gameOverOverlay.style.display='flex';
+    lbSubmitGlobal(PLAYER_NAME,score).then(lbLoadGlobal);
+  }
 
-  /* ==== Her ekranda ortalı & taşma yok: ölçekleme ==== */
+  /* ==== Responsive ölçekleme ==== */
   function fitScale(){
     const wrapRect = gameWrap.getBoundingClientRect();
     const availW = Math.max(320, wrapRect.width  - 8);
-    const availH = Math.max(320, wrapRect.height - 40);  // HUD için biraz pay
+    const availH = Math.max(320, wrapRect.height - 40); // HUD payı
     const sx = availW / canvas.width;
     const sy = availH / canvas.height;
-
-    // **Önemli**: büyük ekranlarda asla büyütme → 1.0 üstüne çıkma.
-    // Küçük ekranlarda küçültme serbest (0.5 altına düşmesin).
-    const s = Math.max(0.6, Math.min(sx, sy, 1.0));
+    const s  = Math.max(0.6, Math.min(sx, sy, 1.0));     // büyük ekranda asla >1 büyütme yok
     canvas.style.transform = `scale(${s})`;
   }
 
-  /* ==== Başlatma ==== */
-  let PLAYER_NAME='';
-  startBtn.addEventListener('click', ()=>{
-    PLAYER_NAME=(nameInput.value||'').trim().slice(0,20)||'Anon';
-    overlay.style.display='none';
-    reset(); running=true; lbLoadGlobal(); requestAnimationFrame(step);
+  /* ==== START / RETRY ==== */
+  function startGame(){
+    PLAYER_NAME = (nameInput.value || '').trim().slice(0,20) || 'Anon';
+    overlay.style.display = 'none';
+    reset();
+    running = true;
+    lbLoadGlobal();
+    requestAnimationFrame(step);
+    fitScale(); // güvenlik
+  }
+  startBtn.addEventListener('click', startGame);
+  retryBtn.addEventListener('click', ()=>{
+    gameOverOverlay.style.display = 'none';
+    reset(); running = true; requestAnimationFrame(step);
   });
-  retryBtn.addEventListener('click', ()=>{ gameOverOverlay.style.display='none'; reset(); running=true; requestAnimationFrame(step); });
 
-  // İlk çizimler + responsive
+  // İlk render ve dinleyiciler
   drawGrid(); fitScale();
   window.addEventListener('resize', fitScale);
-
-  // İlk açılış overlay’de olduğu için oyunu başlatınca tekrar çizilecek.
 })();
 </script>
 </body>
