@@ -5,76 +5,110 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Cube Snake</title>
 <style>
-  :root{ --gap:20px; --pad:16px; }
+  :root{
+    --gap:20px;
+    --pad:16px;
+    --cardW: clamp(240px, 20vw, 310px); /* skor kartı: küçültülmüş ve responsive */
+  }
   *{box-sizing:border-box}
   html,body{
     height:100%; margin:0; background:#0e0f12; color:#e7ebf3;
-    font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
-    overflow:hidden; /* sayfa scroll etmiyoruz; sığdırıyoruz */
+    font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+    overflow:hidden; /* sayfayı taşırmıyoruz, biz ölçekliyoruz */
   }
 
-  /* Tam ekran grid: solda oyun, sağda skor kartı; iki taraf da merkezde */
+  /* Tam ekran düzen: solda oyun, sağda skor kartı. İkisi de merkezde. */
   .layout{
     height:100vh; width:100vw;
     display:grid;
-    grid-template-columns: minmax(0,1fr) 360px;
+    grid-template-columns: minmax(0,1fr) var(--cardW);
     gap:var(--gap);
-    align-items:center;     /* dikey ortalama */
-    justify-items:center;   /* yatay ortalama */
+    align-items:center;      /* dikey merkez */
+    justify-items:center;    /* yatay merkez */
     padding:var(--pad);
   }
-  @media (max-width:1200px){
-    .layout{ grid-template-columns:1fr; grid-template-rows: 1fr auto; }
+  /* Dar ekranlarda skor kartı alta iner */
+  @media (max-width: 1000px){
+    .layout{
+      grid-template-columns: 1fr;
+      grid-template-rows: 1fr auto;
+    }
   }
 
+  /* Oyun kolonu */
   .game-col{
     height:100%; width:100%;
     display:flex; align-items:center; justify-content:center;
     min-width:320px; min-height:320px;
   }
-
   .game-wrap{
     position:relative;
     display:flex; align-items:center; justify-content:center;
   }
 
-  /* Skor etiketi: canvas’ın hemen sol üstünde */
+  /* Skor etiketi: canvas’ın sol üstü */
   .hud{
     position:absolute; left:0; top:-24px;
     background:rgba(20,22,27,.65); padding:6px 10px; border-radius:10px;
     font-weight:700; backdrop-filter: blur(4px);
   }
 
-  /* Canvas */
+  /* Canvas (oyun) */
   #game{
     background:#0b0c10; border:1px solid #1f2430;
     box-shadow:0 10px 40px rgba(0,0,0,.35);
-    transform-origin:top left; display:block;
+    transform-origin: top left;
+    display:block;
   }
 
-  /* Skor kartı */
-  .sidebar{width:360px; max-width:92vw; height:80vh; display:flex; align-items:stretch}
-  .card{background:#181a20; border:1px solid #1f2430; border-radius:16px; padding:16px; box-shadow:0 8px 24px rgba(0,0,0,.25); overflow:auto}
-  .card h3{margin:0 0 8px; font-size:16px}
-  table.lb{width:100%; border-collapse:collapse; font-size:14px}
-  table.lb th,table.lb td{padding:6px 8px; border-bottom:1px solid #242833; text-align:left}
-  table.lb th:nth-child(1),table.lb td:nth-child(1){width:60px}
-  table.lb th:nth-child(3),table.lb td:nth-child(3){text-align:right; width:80px}
-  .fine{font-size:12px; opacity:.75}
+  /* Skor kartı (küçültülmüş) */
+  .sidebar{ width:var(--cardW); max-width:92vw; height:80vh; display:flex; align-items:stretch }
+  .card{
+    background:#181a20; border:1px solid #1f2430; border-radius:16px; padding:14px;
+    box-shadow:0 8px 24px rgba(0,0,0,.25); overflow:auto;
+    font-size: clamp(12px, 1.5vw, 14px);  /* metin boyutu da responsive */
+  }
+  .card h3{ margin:0 0 8px; font-size: clamp(14px, 1.8vw, 16px) }
+  table.lb{ width:100%; border-collapse:collapse }
+  table.lb th,table.lb td{
+    padding:6px 8px; border-bottom:1px solid #242833; text-align:left;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  table.lb th:nth-child(1),table.lb td:nth-child(1){ width:48px }
+  table.lb th:nth-child(3),table.lb td:nth-child(3){ text-align:right; width:64px }
+  .fine{ font-size:.9em; opacity:.75 }
 
-  /* Overlays */
+  /* Overlay’ler */
   .overlay{
     position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
     background:linear-gradient(180deg,rgba(9,10,14,.92),rgba(9,10,14,.88));
     z-index:10; padding:16px;
   }
-  .form{width:min(92vw,420px); background:#181a20; border:1px solid #232937; color:#e7ebf3; border-radius:16px; padding:20px; box-shadow:0 14px 36px rgba(0,0,0,.4)}
-  .form h1{margin:0 0 6px; font-size:20px}
-  .row{margin-top:12px}
-  .row input[type="text"]{width:100%; padding:12px 14px; border-radius:10px; border:1px solid #2a2e36; background:#0f1116; color:#e7ebf3; outline:none}
-  .row button{width:100%; padding:12px; border:0; border-radius:12px; background:#4f7cff; color:#fff; font-weight:800; cursor:pointer; margin-top:10px}
+  .form{
+    width:min(92vw,420px); background:#181a20; border:1px solid #232937; color:#e7ebf3;
+    border-radius:16px; padding:20px; box-shadow:0 14px 36px rgba(0,0,0,.4)
+  }
+  .form h1{ margin:0 0 6px; font-size:20px }
+  .row{ margin-top:12px }
+  .row input[type="text"]{
+    width:100%; padding:12px 14px; border-radius:10px; border:1px solid #2a2e36;
+    background:#0f1116; color:#e7ebf3; outline:none
+  }
+  .row button{
+    width:100%; padding:12px; border:0; border-radius:12px; background:#4f7cff; color:#fff;
+    font-weight:800; cursor:pointer; margin-top:10px
+  }
 
-  .toast{position:fixed; right:16px; top:16px; background:#1b1f27; color:#cfe0ff; padding:10px 12px; border-radius:10px; border:1px solid #273049; display:none; z-index:20}
+  .toast{ position:fixed; right:16px; top:16px; background:#1b1f27; color:#cfe0ff;
+    padding:10px 12px; border-radius:10px; border:1px solid #273049; display:none; z-index:20 }
+  
+  /* Kısa ekranlarda üst/alt nefes payı artır: reklama alan kalsın */
+  @media (max-height: 900px){
+    .layout{ padding-top:28px; padding-bottom:28px }
+  }
+  @media (max-height: 780px){
+    .layout{ padding-top:36px; padding-bottom:36px }
+  }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -84,7 +118,7 @@
   <section class="game-col">
     <div class="game-wrap" id="gameWrap">
       <div class="hud">Skor: <span id="score">0</span></div>
-      <!-- Orijinal piksel boyutu; JS ile küçültüp/ortalarız -->
+      <!-- Orijinal piksel boyutu; JS ile ölçeklenecek -->
       <canvas id="game" width="560" height="560" role="img" aria-label="Yılan Oyunu"></canvas>
     </div>
   </section>
@@ -129,7 +163,7 @@
 (() => {
   'use strict';
 
-  /* ==== Ayarlar ==== */
+  /* ==== Oyun sabitleri ==== */
   const GRID = 28, CELL = 20;                 // 28*20 = 560 px
   const SPEED_START = 8, SPEED_INC_EVERY = 5;
 
@@ -146,7 +180,7 @@
   const gameWrap = document.getElementById('gameWrap');
   canvas.width = GRID * CELL; canvas.height = GRID * CELL;
 
-  /* ==== Supabase ==== */
+  /* ==== Supabase (global skor) ==== */
   const SUPABASE_URL  = window.__SUPABASE_URL  || 'https://obrtgsafmdpztkkckpcx.supabase.co';
   const SUPABASE_ANON = window.__SUPABASE_ANON || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9icnRnc2FmbWRwenRra2NrcGN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzODQzOTksImV4cCI6MjA3NDk2MDM5OX0.yGWrE7kbo1ofi0q_rAeKt4YjS0D0GLwjA8DFQ1SV5Fw';
   let supa = null;
@@ -158,7 +192,7 @@
   function escapeHtml(s){ return String(s).replace(/[&<>\"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
 
   async function lbSubmitGlobal(name, score){
-    if(!supa || score < 2) return; // çok düşük skorları yazmayalım
+    if(!supa || score < 2) return; // düşük skorları yazmayalım
     try{
       const { error } = await supa.from('scores').insert({ name: (name||'Anon').slice(0,20), score });
       if(error){ lbStatusEl.textContent='Skor kaydedilemedi.'; }
@@ -172,7 +206,7 @@
     top10gEl.innerHTML = data.map((r,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(r.name||'Anon')}</td><td>${r.score}</td></tr>`).join('');
   }
 
-  /* ==== Oyun Durumu ==== */
+  /* ==== Oyun durumu ==== */
   let PLAYER_NAME='', snake, dir, pendingDir, food, score, speed, tickTime, eatenCount, last, running=false;
   function reset(){
     snake=[{x:Math.floor(GRID/2),y:Math.floor(GRID/2)}];
@@ -259,37 +293,35 @@
     lbSubmitGlobal(PLAYER_NAME,score).then(lbLoadGlobal);
   }
 
-  /* ==== Responsive ölçekleme ==== */
- function fitScale(){
-  const wrapRect = gameWrap.getBoundingClientRect();
+  /* ==== Responsive ölçekleme: oyun alanı her zaman ortada ==== */
+  function fitScale(){
+    // Oyun kolonunun gerçek kullanılabilir alanı
+    const colRect = document.querySelector('.game-col').getBoundingClientRect();
 
-  // Oyun çevresinde bırakmak istediğimiz boşluk (reklam/nefes payı)
-  const marginW = 24;           // sağ/sol toplam pay
-  const marginH = 140;          // üst+alt toplam pay (banner için yer)
+    // Oyun alanı çevresinde bırakılacak nefes payı (reklam/başlık için)
+    const marginW = 24;
+    const marginH = 140; // üst+alt pay
 
-  const availW = Math.max(320, wrapRect.width  - marginW);
-  const availH = Math.max(320, wrapRect.height - marginH);
+    const availW = Math.max(320, colRect.width  - marginW);
+    const availH = Math.max(320, colRect.height - marginH);
 
-  const sx = availW / canvas.width;
-  const sy = availH / canvas.height;
+    const sx = availW / canvas.width;
+    const sy = availH / canvas.height;
 
-  // --- ÖNEMLİ: Laptop gibi daha kısa ekranlarda bilinçli küçültme tavanı ---
-  // Yüksekliğe göre max ölçek tavanı (reklama yer bıraksın)
-  const vh = window.innerHeight;
-  let cap = 1.0;               // çok geniş/uzun monitörde büyütme yok (1.0)
-  if (vh < 900) cap = 0.85;    // 900px altı: %85
-  if (vh < 820) cap = 0.75;    // 820px altı: %75
-  if (vh < 740) cap = 0.68;    // 740px altı: %68
-  if (vh < 680) cap = 0.60;    // 680px altı: %60
+    // Ekran yüksekliğine göre ölçek tavanı: laptoplarda bilinçli küçültme
+    const vh = window.innerHeight;
+    let cap = 1.0;
+    if (vh < 900) cap = 0.85;
+    if (vh < 820) cap = 0.75;
+    if (vh < 740) cap = 0.68;
+    if (vh < 680) cap = 0.60;
 
-  // Alt sınırı da çok küçülmesin diye 0.5 yapıyoruz
-  const s = Math.max(0.5, Math.min(sx, sy, cap));
-
-  canvas.style.transform = `scale(${s})`;
-}
-
+    const s = Math.max(0.5, Math.min(sx, sy, cap));
+    canvas.style.transform = `scale(${s})`;
+  }
 
   /* ==== START / RETRY ==== */
+  let PLAYER_NAME='';
   function startGame(){
     PLAYER_NAME = (nameInput.value || '').trim().slice(0,20) || 'Anon';
     overlay.style.display = 'none';
@@ -297,7 +329,7 @@
     running = true;
     lbLoadGlobal();
     requestAnimationFrame(step);
-    fitScale(); // güvenlik
+    fitScale();
   }
   startBtn.addEventListener('click', startGame);
   retryBtn.addEventListener('click', ()=>{
@@ -305,7 +337,7 @@
     reset(); running = true; requestAnimationFrame(step);
   });
 
-  // İlk render ve dinleyiciler
+  // İlk çizim ve dinleyiciler
   drawGrid(); fitScale();
   window.addEventListener('resize', fitScale);
 })();
